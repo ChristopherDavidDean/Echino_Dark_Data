@@ -57,7 +57,9 @@ get_grid <- function(data, res, e, r = "N"){ # data is first output from combine
     dplyr::summarize(Coll_count = n())
   singletons$Coll_count[singletons$Coll_count == 1] <- "Singleton"
   singletons$Coll_count[singletons$Coll_count != "Singleton"] <- "Non-singleton"
-  Final <<- left_join(Final, singletons, by = "cells")
+  Final <- left_join(Final, singletons, by = "cells")
+  stack_name <- paste(deparse(substitute(data)), ".spat.bin", sep = "")
+  assign(stack_name, Final, envir = .GlobalEnv)
 }
 
 #=============================================== GET_GRID_IM ===========================================================
@@ -78,7 +80,7 @@ get_grid_im <- function(data, res, name, ext){ # Data is first output from combi
   #r[r > 0] <- 1 # Remove if you want values instead of pure presence/absence.
   countries <- maps::map("world", plot=FALSE, fill = TRUE) # find map to use as backdrop
   countries <<- maptools::map2SpatialPolygons(countries, IDs = countries$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
-  mapTheme <- rasterVis::rasterTheme(region=RColorBrewer::brewer.pal(8,"Greens"))
+  mapTheme <- rasterVis::rasterTheme(region=viridis(8))
   print(rasterVis::levelplot(r, margin=F, par.settings=mapTheme,  main = paste("Total ", (substitute(name)), " per Grid Cell", sep = "")) + #create levelplot for raster
        #   latticeExtra::layer(sp.polygons(states, col = "white", fill = NA), under = T)  + # Plots state lines
           latticeExtra::layer(sp.polygons(countries, col = 0, fill = "light grey"), under = T)) # Plots background colour
