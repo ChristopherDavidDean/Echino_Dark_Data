@@ -1211,7 +1211,7 @@ for(i in 1:length(cand.mod)){
 mod.tab <- AICcmodavg::aictab(cand.set = cand.mod, modnames = Modnames, sort = T)
 
 # Best model
-m2 <- polr(formula = Preservation_score ~ Finalised_lith + Finalised_grainsize + 
+m <- polr(formula = Preservation_score ~ Finalised_lith + Finalised_grainsize + 
             Family + bin_assignment, data = datatrain, Hess = TRUE)
 
 ## view a summary of the model
