@@ -142,9 +142,8 @@ mosaic(~ Preservation_score + Finalised_grainsize,
 
 # Make plot of preservation scores against family, NA values removed
 f.m.dat <- m.dat %>%
-  filter(is.na(Family) == F)%>%
+  filter(is.na(Family) == F) %>%
   filter(Family != 'Triadotiaridae') %>%
-  filter(Family != 'Bothriocidaridae') %>%
   filter(Family != 'Cravenechinidae') %>%
   filter(Family != 'Archaeocidaridae or miocidaridae')
 
@@ -512,6 +511,160 @@ a <- ggplot(results, aes(x=mid_ma, y=Score)) +
 a <- a + scale_colour_viridis_d()
 gggeo_scale(a)
 
+########################################
+##### PRESERVATION SCORE V. FAMILY #####
+########################################
+
+# Filter to genera and select appropriate columns
+jac.1 <- f.m.dat %>%
+  dplyr::select(Family, Preservation_score) %>%
+  group_by_all() %>%
+  summarize(Count = n())
+
+# Transform to Preservation_score by genus matrix
+jac.1 <- dcast(jac.1,
+               Preservation_score ~ Family,
+               value.var = "Count", fill = 0)
+jac.1 <- as.data.frame(jac.1)
+jac.2 <- jac.1[,-1]
+rownames(jac.2) <- jac.1[,1]
+
+# Make binary (presence/absence)
+binary <- jac.2
+binary[binary > 0] <- 1
+
+# Get combinations
+combos <- combn(rownames(binary), 2)
+
+# Loop through combos
+for(a in 1:ncol(combos)){
+  temp <- binary[c(combos[1, a],combos[2, a]),]
+  temp <- vegdist(temp, method = "jaccard")
+  if(a == 1){
+    temp.res <- c(paste(combos[1, a], "v", 
+                        combos[2, a], sep = ""), 
+                  as.numeric(temp))
+  } else{
+    temp.res <- rbind(temp.res, c(paste(combos[1, a], "v", 
+                                        combos[2, a], sep = ""), 
+                                  as.numeric(temp)))
+  }
+}
+
+# Final data wrangling
+temp.res <- as.data.frame(temp.res)
+temp.res <- cbind(temp.res, ncol(binary))
+colnames(temp.res) <- c("Test", "Score", "Family")
+temp.res$Test <- factor(temp.res$Test, levels = c("1v2", "2v3", 
+                                                  "3v4", "4v5", 
+                                                  "1v3", "2v4", 
+                                                  "3v5", "1v4", 
+                                                  "2v5", "1v5"))
+temp.res <- with(temp.res, temp.res[order(Test, Score, Family),])
+
+######################################################
+###### PRESERVATION SCORE V. FAMILY THROUGH TIME #####
+######################################################
+
+# Setup specimens needed
+jac.1 <- m.dat.period %>%
+  dplyr::filter(Rank == "Family" | Rank == "Genus" | Rank == "Species") %>%
+  dplyr::select(Family, Preservation_score, bin_assignment) 
+jac.period <- unique(jac.1$bin_assignment)
+
+# Run a loop
+for(t in jac.period) {
+  # Only select period of interest
+  jac.2 <- jac.1 %>%
+    dplyr::filter(bin_assignment == t) %>%
+    dplyr::select(Preservation_score, Family) %>%
+    group_by_all() %>%
+    summarize(Count = n())
+  
+  # Transform to Preservation_score by Family matrix
+  jac.3 <- dcast(jac.2,
+                 Preservation_score ~ Family,
+                 value.var = "Count", fill = 0)
+  jac.3 <- as.data.frame(jac.3)
+  jac.4 <- jac.3[,-1]
+  rownames(jac.4) <- jac.3[,1]
+  
+  # Make binary (presence/absence)
+  binary <- jac.4
+  binary[binary > 0] <- 1
+  
+  # Get combinations
+  combos <- combn(rownames(binary), 2)
+  
+  # Loop through combos
+  for(a in 1:ncol(combos)){
+    temp <- binary[c(combos[1, a],combos[2, a]),]
+    temp <- vegdist(temp, method = "jaccard")
+    if(a == 1){
+      temp.res <- c(paste(combos[1, a], "v", 
+                          combos[2, a], sep = ""), 
+                    as.numeric(temp))
+    } else{
+      temp.res <- rbind(temp.res, c(paste(combos[1, a], "v", 
+                                          combos[2, a], sep = ""), 
+                                    as.numeric(temp)))
+    }
+  }
+  # Save temporary results and organise
+  temp.res <- as.data.frame(temp.res)
+  temp.res <- cbind(temp.res, t, ncol(binary))
+  colnames(temp.res) <- c("Test", "Score", "interval_name", "Family")
+  
+  # If it's the first loop, make the results
+  if(which(t == jac.period)[[1]] == 1){
+    results <- temp.res
+  }else{ # Otherwise bind to results
+    results <- rbind(results, temp.res)
+  }
+}
+
+# Load info for matching to intervals
+df <- palaeoverse::GTS2020
+df <- df[155:159,]
+
+# Attach to results
+results <- df %>%
+  dplyr::select(interval_name, mid_ma) %>%
+  merge(results, by = "interval_name")
+results$Score <- as.numeric(results$Score)
+
+# Organise factor levels
+order_ind2 <- c("1v2", "2v3", "3v4", "4v5", "1v3", "2v4", "3v5", "1v4", "2v5", "1v5")
+results$Test <- as.factor(results$Test)
+results$Test <- factor(results$Test, levels = order_ind2)
+
+# Plot the combinations for each preservation level through time
+for(i in 1:5){
+  test <- results %>%
+    filter(grepl(i,Test) == T)
+  a <- ggplot(test, aes(x=mid_ma, y=Score)) + 
+    geom_line(aes(colour = Test, linetype = Test)) +
+    scale_x_reverse() +
+    theme_bw() +
+    ylab("Jaccard Similarity") +
+    xlab("Time (Ma)") +
+    geom_point(aes(color = Test))
+  a <- a + scale_colour_viridis_d()
+  assign(paste("p", i, sep = ""), gggeo_scale(a), envir = .GlobalEnv)
+}
+ggarrange2(p1, p2, p3, p4, p5, ncol =3, nrow =2)
+
+# Plot combined graph through time
+a <- ggplot(results, aes(x=mid_ma, y=Score)) + 
+  geom_line(aes(colour = Test, linetype = Test)) +
+  scale_x_reverse() +
+  theme_bw() +
+  ylab("Jaccard Similarity") +
+  xlab("Time (Ma)") +
+  geom_point(aes(color = Test))
+a <- a + scale_colour_viridis_d()
+gggeo_scale(a)
+
 ###############################
 ##### LITHOLOGY V. GENERA #####
 ###############################
@@ -614,6 +767,107 @@ a <- ggplot(results, aes(x=mid_ma, y=Score)) +
 gggeo_scale(a)
 
 ###############################
+##### LITHOLOGY V. FAMILY #####
+###############################
+
+# Filter to genera and select appropriate columns
+jac.1 <- l.m.dat %>%
+  dplyr::filter(Rank == "Family" | Rank == "Genus" | Rank == "Species") %>% 
+  dplyr::select(Family, Finalised_lith) %>%
+  group_by_all() %>%
+  summarize(Count = n())
+
+# Transform to Preservation_score by genus matrix
+jac.1 <- dcast(jac.1,
+               Finalised_lith ~ Family,
+               value.var = "Count", fill = 0)
+jac.1 <- as.data.frame(jac.1)
+jac.2 <- jac.1[,-1]
+rownames(jac.2) <- jac.1[,1]
+
+# Make binary (presence/absence)
+binary <- jac.2
+binary[binary > 0] <- 1
+
+## 1 vs. 2 ##
+lithology.jac <- binary[c(1,2),]
+lithology.jac <- vegdist(lithology.jac, method = "jaccard")
+
+############################################
+##### LITHOLOGY V. FAMILY THROUGH TIME #####
+############################################
+
+# Select relevant specimens
+test <- m.dat.period %>%
+  dplyr::filter(Rank == "Family" | Rank == "Genus" | Rank == "Species") %>%
+  filter(is.na(Finalised_lith) == F) %>%
+  dplyr::select(Family, Finalised_lith, bin_assignment) 
+
+# Setup loop
+for(t in unique(test$bin_assignment)) {
+  
+  # Only select period of interest
+  temp_test <- test %>%
+    dplyr::filter(bin_assignment == t) %>%
+    dplyr::select(Finalised_lith, Family) %>%
+    group_by_all() %>%
+    summarize(Count = n())
+  
+  # Transform to Preservation_score by genus matrix
+  temp_test <- dcast(temp_test,
+                     Finalised_lith ~ Family,
+                     value.var = "Count", fill = 0)
+  temp_test <- as.data.frame(temp_test)
+  temp_test2 <- temp_test[,-1]
+  rownames(temp_test2) <- temp_test[,1]
+  
+  # Make binary (presence/absence)
+  binary <- temp_test2
+  binary[binary > 0] <- 1
+  
+  if(nrow(binary) == 1){
+    temp = NA
+    temp.res <- cbind(temp, t, ncol(binary))
+    colnames(temp.res) <- c("Score", "interval_name", "Family")
+    if(which(t == unique(test$bin_assignment))[[1]] == 1){
+      results <- temp.res
+    }else{
+      results <- rbind(results, temp.res)
+    }
+    next
+  }
+  
+  temp <- vegdist(binary, method = "jaccard")
+  temp.res <- cbind(temp, t, ncol(binary))
+  colnames(temp.res) <- c("Score", "interval_name", "Family")
+  
+  if(which(t == unique(test$bin_assignment))[[1]] == 1){
+    results <- temp.res
+  }else{
+    results <- rbind(results, temp.res)
+  }
+}
+
+# Get data to plot results
+df <- palaeoverse::GTS2020
+df <- df[155:159,]
+results <- df %>%
+  dplyr::select(interval_name, mid_ma) %>%
+  merge(results, by = "interval_name")
+results$Score <- as.numeric(results$Score)
+
+# Plot results
+a <- ggplot(results, aes(x=mid_ma, y=Score)) + 
+  geom_line() +
+  scale_x_reverse() +
+  theme_bw() +
+  ylab("Jaccard Similarity") +
+  xlab("Time (Ma)") +
+  geom_point() +
+  scale_y_continuous(expand = c(0,0), limits = c(0,1.05))
+gggeo_scale(a)
+
+###############################
 ##### GRAINSIZE V. GENERA #####
 ###############################
 
@@ -637,8 +891,8 @@ binary <- test2
 binary[binary > 0] <- 1
 
 ## 1 vs. 2 ##
-lithology.jacc <- binary[c(1,2),]
-lithology.jacc <- vegdist(lithology.jacc, method = "jaccard")
+grainsize.jacc <- binary[c(1,2),]
+grainsize.jacc <- vegdist(grainsize.jacc, method = "jaccard")
 
 ############################################
 ##### GRAINSIZE V. GENERA THROUGH TIME #####
@@ -733,6 +987,126 @@ a <- ggplot(results, aes(x=mid_ma, y=Score)) +
   scale_y_continuous(expand = c(0,0), limits = c(0,1.05))
 gggeo_scale(a)
 
+###############################
+##### GRAINSIZE V. FAMILY #####
+###############################
+
+# Filter to genera and select appropriate columns
+test <- g.m.dat %>%
+  dplyr::filter(Rank == "Family" | Rank == "Genus" | Rank == "Species") %>% 
+  dplyr::select(Family, Finalised_grainsize) %>%
+  group_by_all() %>%
+  summarize(Count = n())
+
+# Transform to Preservation_score by Family matrix
+test <- dcast(test,
+              Finalised_grainsize ~ Family,
+              value.var = "Count", fill = 0)
+test <- as.data.frame(test)
+test2 <- test[,-1]
+rownames(test2) <- test[,1]
+
+# Make binary (presence/absence)
+binary <- test2
+binary[binary > 0] <- 1
+
+## 1 vs. 2 ##
+grainsize.jacc <- binary[c(1,2),]
+grainsize.jacc <- vegdist(grainsize.jacc, method = "jaccard")
+
+############################################
+##### GRAINSIZE V. GENERA THROUGH TIME #####
+############################################
+
+test <- m.dat.period %>%
+  dplyr::filter(Rank == "Family" | Rank == "Genus" | Rank == "Species") %>%
+  filter(is.na(Finalised_grainsize) == F) %>%
+  dplyr::select(Family, Finalised_grainsize, bin_assignment) 
+
+for (l in 1:nrow(test)){
+  if (test$Finalised_grainsize[l]=="Fine Grained"  | test$Finalised_grainsize[l] == "Slate" |
+      test$Finalised_grainsize[l]=="Chert" | test$Finalised_grainsize[l] =="Mudstone/Grainstone" |
+      test$Finalised_grainsize[l]=="Shale" | test$Finalised_grainsize[l] == "Wackestone" | test$Finalised_grainsize[l] == "Mudstone" | 
+      test$Finalised_grainsize[l]=="Siltstone" | test$Finalised_grainsize[l]== "Mudstone/Wackestone" |
+      test$Finalised_grainsize[l]=="Micrite" | test$Finalised_grainsize[l]== "Mudstone/Siltstone"){
+    test$Finalised_grainsize[l]<-"Fine Grained"
+  }
+  else if (test$Finalised_grainsize[l]=="Grainstone" | test$Finalised_grainsize[l] == "Packstone"| 
+           test$Finalised_grainsize[l]=="Sandstone" | test$Finalised_grainsize[l]=="Reefal" |
+           test$Finalised_grainsize[l] == "Coquina" |
+           test$Finalised_grainsize[l] == "Boundstone"){ 
+    test$Finalised_grainsize[l]<-"Coarse Grained"
+  }
+  else{
+    test$Finalised_grainsize[l] <- NA
+  }
+}
+
+
+for(t in unique(test$bin_assignment)) {
+  
+  # Only select period of interest
+  temp_test <- test %>%
+    dplyr::filter(bin_assignment == t) %>%
+    dplyr::select(Finalised_grainsize, Family) %>%
+    group_by_all() %>%
+    summarize(Count = n())
+  
+  # Transform to Preservation_score by Family matrix
+  temp_test <- dcast(temp_test,
+                     Finalised_grainsize ~ Family,
+                     value.var = "Count", fill = 0)
+  temp_test <- as.data.frame(temp_test)
+  temp_test2 <- temp_test[,-1]
+  rownames(temp_test2) <- temp_test[,1]
+  
+  # Make binary (presence/absence)
+  binary <- temp_test2
+  binary[binary > 0] <- 1
+  
+  if(nrow(binary) == 1){
+    temp = NA
+    temp.res <- cbind(temp, t, ncol(binary))
+    colnames(temp.res) <- c("Score", "interval_name", "Family")
+    
+    if(which(t == unique(test$bin_assignment))[[1]] == 1){
+      results <- temp.res
+    }else{
+      results <- rbind(results, temp.res)
+    }
+    next
+  }
+  
+  temp <- vegdist(binary, method = "jaccard")
+  temp.res <- cbind(temp, t, ncol(binary))
+  colnames(temp.res) <- c("Score", "interval_name", "Family")
+  
+  if(which(t == unique(test$bin_assignment))[[1]] == 1){
+    results <- temp.res
+  }else{
+    results <- rbind(results, temp.res)
+  }
+}
+
+# Get data to plot results
+df <- palaeoverse::GTS2020
+df <- df[155:159,]
+results <- df %>%
+  dplyr::select(interval_name, mid_ma) %>%
+  merge(results, by = "interval_name")
+results$Score <- as.numeric(results$Score)
+
+# Plot results
+a <- ggplot(results, aes(x=mid_ma, y=Score)) + 
+  geom_line() +
+  scale_x_reverse() +
+  theme_bw() +
+  ylab("Jaccard Similarity") +
+  xlab("Time (Ma)") +
+  geom_point() +
+  scale_y_continuous(expand = c(0,0), limits = c(0,1.05))
+gggeo_scale(a)
+
 ################################################################################
 # 5. ORDINAL LEAST REGRESSION
 ################################################################################
@@ -748,7 +1122,9 @@ g.m.period.dat$bin_assignment <- factor(g.m.period.dat$bin_assignment, levels = 
 g.m.period.dat$Preservation_score <- factor(g.m.period.dat$Preservation_score, 
                                      levels = c("1", "2", "3", "4", "5"), 
                                      ordered = TRUE)
+# Remove families with low numbers (Cravenechinidae - 2 specimens) and NAs
 data <- g.m.period.dat %>%
+  filter(Family != 'Cravenechinidae') %>%
   filter(!is.na(Family))
 
 # Set up modelling
@@ -763,73 +1139,79 @@ table(datatrain$Finalised_grainsize, datatrain$Preservation_score, datatrain$Fin
 
 datatest <- data[-index,]
 
-m <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
-            bin_assignment + Finalised_lith*Finalised_grainsize + Family*bin_assignment, 
-          data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
+m1 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
             bin_assignment + Finalised_lith*Finalised_grainsize, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
-            bin_assignment + Family*bin_assignment, 
-          data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
+summary(m1)
+m2 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
             bin_assignment, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family, 
+summary(m2)
+m3 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + bin_assignment, 
+summary(m3)
+m4 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + bin_assignment, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + bin_assignment + Family, 
+summary(m4)
+m5 <- polr(Preservation_score ~ Finalised_lith + bin_assignment + Family, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_grainsize + Family + bin_assignment, 
+summary(m5)
+m6 <- polr(Preservation_score ~ Finalised_grainsize + Family + bin_assignment, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_grainsize + bin_assignment, 
+summary(m6)
+m7 <- polr(Preservation_score ~ Finalised_grainsize + bin_assignment, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_grainsize + Family, 
+summary(m7)
+m8 <- polr(Preservation_score ~ Finalised_grainsize + Family, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + bin_assignment, 
+summary(m8)
+m9 <- polr(Preservation_score ~ Finalised_lith + bin_assignment, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + Family, 
+summary(m9)
+m10 <- polr(Preservation_score ~ Finalised_lith + Family, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Family + bin_assignment, 
+summary(m10)
+m11 <- polr(Preservation_score ~ Family + bin_assignment, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ bin_assignment, 
+summary(m11)
+m12 <- polr(Preservation_score ~ bin_assignment, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Family, 
+summary(m12)
+m13 <- polr(Preservation_score ~ Family, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Finalised_lith * Finalised_grainsize, 
+summary(m13)
+m14 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Finalised_lith * Finalised_grainsize, 
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize, # Best model
+summary(m14)
+m15 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize,
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_lith,
+summary(m15)
+m16 <- polr(Preservation_score ~ Finalised_lith,
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ Finalised_grainsize,
+summary(m16)
+m17 <- polr(Preservation_score ~ Finalised_grainsize,
           data = datatrain, Hess=TRUE)
-summary(m)
-m <- polr(Preservation_score ~ 1,
+summary(m17)
+m18 <- polr(Preservation_score ~ 1,
           data = datatrain, Hess=TRUE)
-summary(m)
+summary(m18)
+
+cand.mod <- list(m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, 
+                 m15, m16, m17, m18)
+
+Modnames <- c()
+for(i in 1:length(cand.mod)){
+  temp.name <- as.character(cand.mod[[i]]$terms[[3]])
+  if(length(temp.name) > 1){
+    temp.name <- temp.name[-1]
+    temp.name <- paste(temp.name[1], temp.name[2], sep = " + ")
+  }
+  Modnames <- c(Modnames, temp.name)
+}
+mod.tab <- AICcmodavg::aictab(cand.set = cand.mod, modnames = Modnames, sort = T)
 
 # Best model
-m <- polr(formula = Preservation_score ~ Finalised_lith + Finalised_grainsize + 
+m2 <- polr(formula = Preservation_score ~ Finalised_lith + Finalised_grainsize + 
             Family + bin_assignment, data = datatrain, Hess = TRUE)
 
 ## view a summary of the model
