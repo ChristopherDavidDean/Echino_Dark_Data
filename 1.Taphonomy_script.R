@@ -22,11 +22,11 @@ source("0.Setup.R")
 #####################
 
 # Bar plot
-make.bar.plot <- function(dataset, fill, legend, flip = FALSE){
+make.bar.plot <- function(dataset, fill, legend, colour, flip = FALSE){
   a <- ggplot(dataset) +
     aes(x = Preservation_score, fill = fill) +
     geom_bar() +
-    scale_fill_manual(values=wes_palette("Zissou1")) +
+    scale_fill_manual(values=wes_palette(colour)) +
     guides(fill=guide_legend(title=legend)) +
     ylab("Frequency") +
     xlab("Preservation Score") +
@@ -38,11 +38,11 @@ make.bar.plot <- function(dataset, fill, legend, flip = FALSE){
 }
 
 # Proportional bar plot
-make.prop.bar.plot <- function(dataset, fill, legend, flip = FALSE){
+make.prop.bar.plot <- function(dataset, fill, legend, colour, flip = FALSE){
   a <- ggplot(dataset) +
     aes(x = Preservation_score, fill = fill) +
     geom_bar(position = 'fill') +
-    scale_fill_manual(values=wes_palette("Zissou1")) +
+    scale_fill_manual(values=wes_palette(colour)) +
     guides(fill=guide_legend(title=legend)) +
     ylab("Proportion of dataset") +
     xlab("Preservation Score") +
@@ -63,10 +63,10 @@ l.m.dat <- m.dat %>%
   filter(is.na(Finalised_lith) == F)
 
 # Make bar plot
-make.bar.plot(l.m.dat, l.m.dat$Finalised_lith, "Lithology", FALSE)
+make.bar.plot(l.m.dat, l.m.dat$Finalised_lith, "Lithology", colour = "Zissou1", FALSE)
 
 # Make proportional bar plot
-make.prop.bar.plot(l.m.dat, l.m.dat$Finalised_lith, "Lithology", FALSE)
+make.prop.bar.plot(l.m.dat, l.m.dat$Finalised_lith, "Lithology", colour = "Zissou1", FALSE)
 
 # Format into table and run Chi Squared test
 test <- chisq.test(table(l.m.dat$Preservation_score, l.m.dat$Finalised_lith))
@@ -116,10 +116,10 @@ g.m.dat <- g.m.dat %>%
   filter(is.na(Finalised_grainsize) == F) 
 
 # Make bar plot
-make.bar.plot(g.m.dat, g.m.dat$Finalised_grainsize, "Grain Size", flip = FALSE)
+make.bar.plot(g.m.dat, g.m.dat$Finalised_grainsize, "Grain Size", colour = "Darjeeling2", flip = FALSE)
 
 # Make proportional bar plot
-make.prop.bar.plot(g.m.dat, g.m.dat$Finalised_grainsize, "Grain Size", flip = FALSE)
+make.prop.bar.plot(g.m.dat, g.m.dat$Finalised_grainsize, "Grain Size", colour = "Darjeeling2", flip = FALSE)
 
 # Format into table and run Chi Squared test
 test <- chisq.test(table(g.m.dat$Preservation_score, g.m.dat$Finalised_grainsize))
