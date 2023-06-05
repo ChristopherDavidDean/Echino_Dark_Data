@@ -29,6 +29,7 @@ library(effects)
 library(deeptime)
 library(wesanderson)
 library(viridis)
+library(raster)
 
 # Set working directory
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -67,6 +68,7 @@ period <- m.dat %>%
   dplyr::filter(Age_resolution == "Period" | Age_resolution == "Series")
 stage <- m.dat %>%
   dplyr::filter(Age_resolution == "Stage") 
+  
 
 # Assign numerical ages to periods
 colnames(period)[28] <- "max_ma"
@@ -104,3 +106,20 @@ m.dat$Min_period <- as.factor(m.dat$Min_period)
 m.dat$Min_period <- factor(m.dat$Max_period, levels = order_ind)
 m.dat$Min_period <- factor(m.dat$Min_period, levels = order_ind)
 
+################################################################################
+# 3. PALAEOROTATION
+################################################################################
+
+# Filter for specimens which have geographic coords and make numeric
+m.dat.rotate <- m.dat %>%
+  filter(is.na(lat) != T)
+m.dat.rotate$lat <- as.numeric(m.dat.rotate$lat)
+m.dat.rotate$lng <- as.numeric(m.dat.rotate$lng)
+
+# Palaeorotate
+m.dat.rotate <- palaeorotate(m.dat.rotate, 
+             lng = 'lng', 
+             lat = 'lat', 
+             age = "bin_midpoint",
+             model = "PALEOMAP",
+             method = "point")

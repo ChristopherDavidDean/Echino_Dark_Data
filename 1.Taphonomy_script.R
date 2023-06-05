@@ -178,9 +178,9 @@ test$expected # compare against what the test would have expected
 # 3. TEMPORAL PATTERNS
 ################################################################################
 
-##################
-##### SET UP #####
-##################
+#################################
+##### SET UP - PERIOD LEVEL #####
+#################################
 
 # Load periods and rename columns for binning
 data(periods)
@@ -204,6 +204,23 @@ myColours <- df$colour
 # Assign colours
 names(myColours) <- levels(m.dat.period$bin_assignment)
 custom_colours <- scale_colour_manual(name = "bin_assignment", values = myColours[1:5])
+
+#################################
+##### SET UP - SERIES LEVEL #####
+#################################
+
+# Load series data
+series <- read.csv("series.csv")
+
+# Bin into series
+m.dat.series <- bin_time(m.dat, bins = series, method = 'majority')
+m.dat.series$bin_assignment <- as.factor(m.dat.series$bin_assignment)
+m.dat.series$bin_assignment <- factor(m.dat.series$bin_assignment, levels = order_ind)
+
+# Assign colours
+myColours <- series$color
+names(myColours) <- levels(m.dat.series$bin_assignment)
+custom_colours <- scale_colour_manual(name = "bin_assignment", values = myColours[1:6])
 
 ########################################
 ##### PRESERVATION PER TIME PERIOD #####
@@ -351,6 +368,73 @@ a <- ggplot(test, aes(x=mid_ma, y=Freq, fill=Family)) +
                              wes_palette("Zissou1"), 
                              wes_palette("Royal2"))) 
 gggeo_scale(a)
+
+##### SERIES LEVEL #####
+
+# Plot preservation score per time period (discreet)
+ggplot(m.dat.series, aes(x = Preservation_score, fill = bin_assignment)) +
+  geom_bar() +
+  scale_fill_manual("Legend", values = myColours) +
+  ylab("Frequency") +
+  xlab("Preservation Score") +
+  guides(fill=guide_legend(title="Period")) +
+  theme_bw() 
+
+# Plot proportional preservation score per time period (discreet)
+ggplot(m.dat.series) +
+  aes(x = Preservation_score, fill = bin_assignment) +
+  geom_bar(position = 'fill') +
+  scale_fill_manual("Legend", values = myColours) +
+  ylab("Proportion of total") +
+  guides(fill=guide_legend(title="Period")) +
+  xlab("Preservation Score") +
+  theme_bw() +
+  scale_y_continuous(expand = c(0,0), limits = c(0,1))
+
+# Plot preservation scores through time (continuous)
+a <- as.data.frame(table(m.dat.series$Preservation_score, m.dat.series$bin_assignment))
+names(a) <- c("Preservation_score", "bin", "Freq")
+a <- merge(a, series, by = 'bin')
+a$Preservation_score <- factor(a$Preservation_score, levels = c("5", "4", "3", "2", "1"))
+a <- ggplot(a, aes(x=mid_ma, y=Freq, fill=Preservation_score)) + 
+  geom_area() +
+  scale_x_reverse() +
+  theme_bw() +
+  guides(fill=guide_legend(title="Preservation score")) +
+  ylab("Frequency") +
+  xlab("Time (Ma)") +
+  scale_fill_manual(values=(wes_palette("Zissou1")))
+gggeo_scale(a, dat = series)
+
+# Plot proportional preservation scores through time (continuous)
+a <- as.data.frame(table(m.dat.series$Preservation_score, m.dat.series$bin_assignment))
+names(a) <- c("Preservation_score", "bin", "Freq")
+a <- merge(a, series, by = 'bin')
+a$Preservation_score <- factor(a$Preservation_score, levels = c("5", "4", "3", "2", "1"))
+a <- ggplot(a, aes(x=mid_ma, y=Freq, fill=Preservation_score)) + 
+  geom_area(position = 'fill') +
+  scale_x_reverse() +
+  theme_bw() +
+  ylab("Frequency") +
+  guides(fill=guide_legend(title="Preservation score")) +
+  xlab("Time (Ma)") +
+  scale_fill_manual(values=(wes_palette("Zissou1"))) 
+gggeo_scale(a, dat = series)
+
+# Format into table and run Chi Squared test
+test <- chisq.test(table(m.dat.series$Preservation_score, m.dat.series$bin_assignment))
+test
+test$expected # compare against what the test would have expected
+
+# Mosaic plot
+mosaic(~ Preservation_score + bin_assignment,
+       direction = c("v", "h"),
+       data = m.dat.series,
+       shade = TRUE, 
+       labeling_args = list(rot_labels = c(0), just_labels = "right", 
+                            set_varnames = c(Preservation_score = "Preservation Score",
+                                             bin_assignment = ""))
+)
 
 ################################################################################
 # 4. JACCARD SIMILARITY
@@ -1324,17 +1408,17 @@ split(stage.pres.gen, stage.pres.gen$Var2, order = FALSE)
 ################################################
 
 # Stage - diversity vs.preservation score
-stage.spec.div.1 <- cor.test(div.stage.spec$SIBs, stage.pres.spec.1$Freq, method = 'spearman')
-stage.spec.div.2 <- cor.test(div.stage.spec$SIBs, stage.pres.spec.2$Freq, method = 'spearman')
-stage.spec.div.3 <- cor.test(div.stage.spec$SIBs, stage.pres.spec.3$Freq, method = 'spearman')
-stage.spec.div.4 <- cor.test(div.stage.spec$SIBs, stage.pres.spec.4$Freq, method = 'spearman')
-stage.spec.div.5 <- cor.test(div.stage.spec$SIBs, stage.pres.spec.5$Freq, method = 'spearman')
+stage.spec.div.1 <- cor.test(log10(div.stage.spec$SIBs), log10(stage.pres.spec.1$Freq), method = 'spearman')
+stage.spec.div.2 <- cor.test(log10(div.stage.spec$SIBs), log10(stage.pres.spec.2$Freq), method = 'spearman')
+stage.spec.div.3 <- cor.test(log10(div.stage.spec$SIBs), log10(stage.pres.spec.3$Freq), method = 'spearman')
+stage.spec.div.4 <- cor.test(log10(div.stage.spec$SIBs), log10(stage.pres.spec.4$Freq), method = 'spearman')
+stage.spec.div.5 <- cor.test(log10(div.stage.spec$SIBs), log10(stage.pres.spec.5$Freq), method = 'spearman')
 # Stage - collections vs. preservation score
-stage.spec.col.1 <- cor.test(div.stage.spec$colls, stage.pres.spec.1$Freq, method = 'spearman')
-stage.spec.col.2 <- cor.test(div.stage.spec$colls, stage.pres.spec.2$Freq, method = 'spearman')
-stage.spec.col.3 <- cor.test(div.stage.spec$colls, stage.pres.spec.3$Freq, method = 'spearman')
-stage.spec.col.4 <- cor.test(div.stage.spec$colls, stage.pres.spec.4$Freq, method = 'spearman')
-stage.spec.col.5 <- cor.test(div.stage.spec$colls, stage.pres.spec.5$Freq, method = 'spearman')
+stage.spec.col.1 <- cor.test(log10(div.stage.spec$colls), log10(stage.pres.spec.1$Freq), method = 'spearman')
+stage.spec.col.2 <- cor.test(log10(div.stage.spec$colls), log10(stage.pres.spec.2$Freq), method = 'spearman')
+stage.spec.col.3 <- cor.test(log10(div.stage.spec$colls), log10(stage.pres.spec.3$Freq), method = 'spearman')
+stage.spec.col.4 <- cor.test(log10(div.stage.spec$colls), log10(stage.pres.spec.4$Freq), method = 'spearman')
+stage.spec.col.5 <- cor.test(log10(div.stage.spec$colls), log10(stage.pres.spec.5$Freq), method = 'spearman')
 
 stage.div.spec <- rbind(c("stage", 1, "diversity (species)", stage.spec.div.1$estimate, stage.spec.div.1$p.value),
                         c("stage", 2, "diversity (species)", stage.spec.div.2$estimate, stage.spec.div.2$p.value),
@@ -1377,17 +1461,17 @@ period.coll.spec <- rbind(c("period", 1, "collections (species)", period.spec.co
 ##############################################
 
 # Stage - diversity vs.preservation score
-stage.gen.div.1 <- cor.test(div.stage.gen$SIBs, stage.pres.gen.1$Freq, method = 'spearman')
-stage.gen.div.2 <- cor.test(div.stage.gen$SIBs, stage.pres.gen.2$Freq, method = 'spearman')
-stage.gen.div.3 <- cor.test(div.stage.gen$SIBs, stage.pres.gen.3$Freq, method = 'spearman')
-stage.gen.div.4 <- cor.test(div.stage.gen$SIBs, stage.pres.gen.4$Freq, method = 'spearman')
-stage.gen.div.5 <- cor.test(div.stage.gen$SIBs, stage.pres.gen.5$Freq, method = 'spearman')
+stage.gen.div.1 <- cor.test(log10(div.stage.gen$SIBs), log10(stage.pres.gen.1$Freq), method = 'spearman')
+stage.gen.div.2 <- cor.test(log10(div.stage.gen$SIBs), log10(stage.pres.gen.2$Freq), method = 'spearman')
+stage.gen.div.3 <- cor.test(log10(div.stage.gen$SIBs), log10(stage.pres.gen.3$Freq), method = 'spearman')
+stage.gen.div.4 <- cor.test(log10(div.stage.gen$SIBs), log10(stage.pres.gen.4$Freq), method = 'spearman')
+stage.gen.div.5 <- cor.test(log10(div.stage.gen$SIBs), log10(stage.pres.gen.5$Freq), method = 'spearman')
 # Stage - collections vs. preservation score
-stage.gen.col.1 <- cor.test(div.stage.gen$colls, stage.pres.gen.1$Freq, method = 'spearman')
-stage.gen.col.2 <- cor.test(div.stage.gen$colls, stage.pres.gen.2$Freq, method = 'spearman')
-stage.gen.col.3 <- cor.test(div.stage.gen$colls, stage.pres.gen.3$Freq, method = 'spearman')
-stage.gen.col.4 <- cor.test(div.stage.gen$colls, stage.pres.gen.4$Freq, method = 'spearman')
-stage.gen.col.5 <- cor.test(div.stage.gen$colls, stage.pres.gen.5$Freq, method = 'spearman')
+stage.gen.col.1 <- cor.test(log10(div.stage.gen$colls), log10(stage.pres.gen.1$Freq), method = 'spearman')
+stage.gen.col.2 <- cor.test(log10(div.stage.gen$colls), log10(stage.pres.gen.2$Freq), method = 'spearman')
+stage.gen.col.3 <- cor.test(log10(div.stage.gen$colls), log10(stage.pres.gen.3$Freq), method = 'spearman')
+stage.gen.col.4 <- cor.test(log10(div.stage.gen$colls), log10(stage.pres.gen.4$Freq), method = 'spearman')
+stage.gen.col.5 <- cor.test(log10(div.stage.gen$colls), log10(stage.pres.gen.5$Freq), method = 'spearman')
 
 stage.div.gen <-  rbind(c("stage", 1, "diversity (genera)",stage.gen.div.1$estimate, stage.gen.div.1$p.value),
                         c("stage", 2, "diversity (genera)",stage.gen.div.2$estimate, stage.gen.div.2$p.value),
@@ -1401,17 +1485,17 @@ stage.coll.gen <-  rbind(c("stage", 1, "collections (genera)",stage.gen.col.1$es
                          c("stage", 5, "collections (genera)",stage.gen.col.5$estimate, stage.gen.col.5$p.value))
 
 # Period - diversity vs. preservation score
-period.gen.div.1 <- cor.test(div.period.gen$SIBs, period.pres.gen.1$Freq, method = 'spearman')
-period.gen.div.2 <- cor.test(div.period.gen$SIBs, period.pres.gen.2$Freq, method = 'spearman')
-period.gen.div.3 <- cor.test(div.period.gen$SIBs, period.pres.gen.3$Freq, method = 'spearman')
-period.gen.div.4 <- cor.test(div.period.gen$SIBs, period.pres.gen.4$Freq, method = 'spearman')
-period.gen.div.5 <- cor.test(div.period.gen$SIBs, period.pres.gen.5$Freq, method = 'spearman')
+period.gen.div.1 <- cor.test(log10(div.period.gen$SIBs), log10(period.pres.gen.1$Freq), method = 'spearman')
+period.gen.div.2 <- cor.test(log10(div.period.gen$SIBs), log10(period.pres.gen.2$Freq), method = 'spearman')
+period.gen.div.3 <- cor.test(log10(div.period.gen$SIBs), log10(period.pres.gen.3$Freq), method = 'spearman')
+period.gen.div.4 <- cor.test(log10(div.period.gen$SIBs), log10(period.pres.gen.4$Freq), method = 'spearman')
+period.gen.div.5 <- cor.test(log10(div.period.gen$SIBs), log10(period.pres.gen.5$Freq), method = 'spearman')
 # Period - collections vs. preservation score
-period.gen.col.1 <- cor.test(div.period.gen$colls, period.pres.gen.1$Freq, method = 'spearman')
-period.gen.col.2 <- cor.test(div.period.gen$colls, period.pres.gen.2$Freq, method = 'spearman')
-period.gen.col.3 <- cor.test(div.period.gen$colls, period.pres.gen.3$Freq, method = 'spearman')
-period.gen.col.4 <- cor.test(div.period.gen$colls, period.pres.gen.4$Freq, method = 'spearman')
-period.gen.col.5 <- cor.test(div.period.gen$colls, period.pres.gen.5$Freq, method = 'spearman')
+period.gen.col.1 <- cor.test(log10(div.period.gen$colls), log10(period.pres.gen.1$Freq), method = 'spearman')
+period.gen.col.2 <- cor.test(log10(div.period.gen$colls), log10(period.pres.gen.2$Freq), method = 'spearman')
+period.gen.col.3 <- cor.test(log10(div.period.gen$colls), log10(period.pres.gen.3$Freq), method = 'spearman')
+period.gen.col.4 <- cor.test(log10(div.period.gen$colls), log10(period.pres.gen.4$Freq), method = 'spearman')
+period.gen.col.5 <- cor.test(log10(div.period.gen$colls), log10(period.pres.gen.5$Freq), method = 'spearman')
 
 period.div.gen <-  rbind(c("period", 1, "diversity (genera)", period.gen.div.1$estimate, period.gen.div.1$p.value),
                          c("period", 2, "diversity (genera)", period.gen.div.2$estimate, period.gen.div.2$p.value),
@@ -1432,4 +1516,159 @@ colnames(cor.results) <- c("Bin size", "Preservation Score", "vs.", "Rho", "p")
 cor.results$Rho <- signif(as.numeric(cor.results$Rho), digits = 3)
 cor.results$p <- signif(as.numeric(cor.results$p), digits = 8)
 
+#################################
+##### SED TYPE CORRELATIONS #####
+#################################
 
+##### SETUP: PBDB #####
+
+# Load all palaeozoic occurrences
+pb.all <- read.csv("all_palaeozoic_binned.csv")
+
+# Get distinct collections through time
+All.colls <- pb.all %>%
+  dplyr::select(collection_no, max_ma, min_ma, lng, lat, cc, formation, lithology1, environment, bin_assignment, bin_midpoint) %>%
+  distinct()
+
+# Make list of carbonate/siliclastic terms
+carb_list <- c('"carbonate', '"limestone"', '"reef rocks"', 'bafflestone', 
+               'bindstone', 'dolomite', 'floatstone', 'framestone', 'evaporite',
+               'grainstone', 'lime mudstone', 'marl', 'packstone', 'rudstone',
+               'wackestone')
+sili_list <- c('"shale"', '"siliciclastic"', '"volcaniclastic"', 'ash', 'breccia', 
+               'chert', 'claystone', 'coal', 'conglomerate', 'gravel', 'ironstone', 
+               'lignite', 'mudstone', 'phosphorite', 'phyllite', 'quartzite', 
+               'radiolariate', 'sandstone', 'schist', 'siderite', 'siltstone', 
+               'slate', 'tuff')
+
+# Subset collections
+carb.colls <- filter(All.colls, lithology1 %in% carb_list)
+sili.colls <-filter(All.colls, lithology1 %in% sili_list)
+
+carb.colls <- carb.colls %>%
+  dplyr::group_by(bin_midpoint) %>%
+  dplyr::summarise(count = n(), lith = "carb") 
+
+sili.colls <- sili.colls %>%
+  dplyr::group_by(bin_midpoint) %>%
+  dplyr::summarise(count = n(), lith = "sili")
+
+All.colls <- rbind(carb.colls, sili.colls)
+
+a <- ggplot(All.colls, aes(x=bin_midpoint, y=count)) + 
+  geom_line(aes(colour = lith)) +
+  scale_x_reverse() +
+  theme_bw() +
+  ylab("Jaccard Similarity") +
+  xlab("Time (Ma)") +
+  geom_point(aes(color = lith))
+gggeo_scale(a)
+
+##### SETUP: MACROSTRAT #####
+
+# Read in data
+carb.macro <- read.csv('https://macrostrat.org/api/v2/units?lith_type=carbonate&environ_class=marine&response=long&format=csv', stringsAsFactors = FALSE)
+sili.macro <- read.csv('https://macrostrat.org/api/v2/units?lith_type=siliciclastic&environ_class=marine&response=long&format=csv', stringsAsFactors = FALSE)
+
+# Change column names
+names(carb.macro)[names(carb.macro) == 't_age'] <- "min_ma"
+names(carb.macro)[names(carb.macro) == 'b_age'] <- "max_ma"
+names(sili.macro)[names(sili.macro) == 't_age'] <- "min_ma"
+names(sili.macro)[names(sili.macro) == 'b_age'] <- "max_ma"
+
+# Filter to relevant data
+carb.macro <- carb.macro %>%
+  filter(max_ma < 470) %>%
+  filter(min_ma > 252)
+sili.macro <- sili.macro %>%
+  filter(max_ma < 470) %>%
+  filter(min_ma > 252)
+
+# Bin data
+carb.macro <- bin_time(carb.macro, stages, method = "all")
+sili.macro <- bin_time(sili.macro, stages, method = "all")
+
+carb.macro  <- carb.macro  %>%
+  dplyr::group_by(bin_midpoint) %>%
+  dplyr::summarise(count = n(), lith = "carb") 
+sili.macro <- sili.macro  %>%
+  dplyr::group_by(bin_midpoint) %>%
+  dplyr::summarise(count = n(), lith = "sili") 
+
+carb.macro <- carb.macro  %>%
+  dplyr::group_by(bin_midpoint) %>%
+  dplyr::summarise(count = sum(col_area), lith = "carb") 
+sili.macro <- sili.macro  %>%
+  dplyr::group_by(bin_midpoint) %>%
+  dplyr::summarise(count = sum(col_area), lith = "sili") 
+
+macro <- rbind(carb.macro, sili.macro)
+
+a <- ggplot(macro, aes(x=bin_midpoint, y=count)) + 
+  geom_line(aes(colour = lith)) +
+  scale_x_reverse() +
+  theme_bw() +
+  ylab("Jaccard Similarity") +
+  xlab("Time (Ma)") +
+  geom_point(aes(color = lith)) 
+gggeo_scale(a)
+
+##### CORRELATIONS #####
+
+# Taphonomic grade vs. carbonate (PBDB)
+stage.spec.div.1 <- cor.test(log10(), log10(stage.pres.spec.1$Freq), method = 'spearman')
+# Taphonomic grade vs. siliclastic (PBDB)
+
+# Taphonomic grade vs. carbonate (Macrostrat)
+
+# Taphonomic grade vs. siliclastic (Macrostrat)
+
+
+
+################################################################################
+# 7. MAPS
+################################################################################
+
+####################
+##### FUNCTION #####
+####################
+
+get_grid_im <- function(data, res, name, ext){ # Data is first output from combine_data (fossil.colls). Res is chosen resolution in degrees. name is user inputted string related to data inputted, for display on graphs. 
+  xy <- cbind(as.double(data$lng), as.double(data$lat))
+  #xy <- unique(xy)
+  r <- raster::raster(ext = ext, res = res)
+  r <- raster::rasterize(xy, r, fun = 'count')
+  #r[r > 0] <- 1 # Remove if you want values instead of pure presence/absence.
+  countries <- maps::map("world", plot=FALSE, fill = TRUE) # find map to use as backdrop
+  countries <<- maptools::map2SpatialPolygons(countries, IDs = countries$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
+  mapTheme <- rasterVis::rasterTheme(region=viridis(8))
+  print(rasterVis::levelplot(r, margin=F, par.settings=mapTheme,  main = paste("Total ", (substitute(name)), " per Grid Cell", sep = "")) + #create levelplot for raster
+          #   latticeExtra::layer(sp.polygons(states, col = "white", fill = NA), under = T)  + # Plots state lines
+          latticeExtra::layer(sp.polygons(countries, col = 0, fill = "light grey"), under = T)) # Plots background colour
+  hist(r, breaks = 20,
+       main = paste((substitute(name)), " per Grid Cell", sep = ""),
+       xlab = "Number of Collections", ylab = "Number of Grid Cells",
+       col = "springgreen")
+  r <<- r
+}
+
+##################
+##### MODERN #####
+##################
+
+# Set extent
+e <<- extent(-180, 180, -90, 90)
+
+##### ALL SPECIMENS #####
+get_grid_im(m.dat, 2,  "Museum Echinoids", ext = e)
+
+##### TAPH GRADES #####
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 1), 2,  "Museum Echinoids", ext = e)
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 2), 2,  "Museum Echinoids", ext = e)
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 3), 2,  "Museum Echinoids", ext = e)
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 4), 2,  "Museum Echinoids", ext = e)
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 5), 2,  "Museum Echinoids", ext = e)
+
+##################
+##### PALAEO #####
+##################
