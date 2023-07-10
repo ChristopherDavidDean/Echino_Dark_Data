@@ -1205,7 +1205,7 @@ model.data$Preservation_score <- factor(model.data$Preservation_score,
                                      ordered = TRUE)
 
 # Remove families with low numbers (Cravenechinidae - 2 specimens) and NAs
-data <- model.data %>%
+data.set <- model.data %>%
   filter(Family != 'Cravenechinidae') %>%
   filter(!is.na(Family)) %>%
   dplyr::select(Family, Genus, Species, Rank, Museum_Number, Preservation_score, Continent, 
@@ -1254,7 +1254,7 @@ model.data$Preservation_score <- factor(model.data$Preservation_score,
                                         ordered = TRUE)
 
 # Remove families with low numbers (Cravenechinidae - 2 specimens) and NAs
-data <- model.data %>%
+data.set <- model.data %>%
   filter(Family != 'Cravenechinidae') %>%
   filter(!is.na(Family)) %>%
   dplyr::select(Family, Genus, Species, Rank, Museum_Number, Preservation_score, Continent, 
@@ -1267,17 +1267,17 @@ data <- model.data %>%
 #######################################
 
 # Set up modelling
-samplesize <- 0.6*nrow(data)
-index <- sample(seq_len(nrow(data)), size = samplesize)
+samplesize <- 0.6*nrow(data.set)
+index <- sample(seq_len(nrow(data.set)), size = samplesize)
 
 #Creating training and test set 
-datatrain <- data[index,]
+datatrain <- data.st[index,]
 table(datatrain$Finalised_lith, datatrain$Finalised_grainsize)
 table(datatrain$Finalised_lith, datatrain$Preservation_score)
 table(datatrain$Finalised_grainsize, datatrain$Preservation_score, datatrain$Finalised_lith)
 
 # Get test data
-datatest <- data[-index,]
+datatest <- data.st[-index,]
 
 # Set full model
 full.model <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
@@ -1336,7 +1336,7 @@ plot(Effect(focal.predictors = c("p_lat", "Finalised_lith"),m[[1]]),
 ###############################
 
 # Set preservation level to explore
-data.LR <- set_Pres_score(data, c(4,5))
+data.LR <- set_Pres_score(data.set, c(4,5))
 
 # Set full model
 full.model <- glm(formula = LR_Pres_score ~ Finalised_lith + Finalised_grainsize + Family + 
