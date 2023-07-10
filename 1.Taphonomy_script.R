@@ -213,6 +213,7 @@ custom_colours <- scale_colour_manual(name = "bin_assignment", values = myColour
 series <- read.csv("series.csv")
 
 # Bin into series
+order_ind <- c("Permian", "Pennsylvanian", "Mississippian", "Devonian", "Silurian", "Ordovician")
 m.dat.series <- bin_time(m.dat, bins = series, method = 'majority')
 m.dat.series$bin_assignment <- as.factor(m.dat.series$bin_assignment)
 m.dat.series$bin_assignment <- factor(m.dat.series$bin_assignment, levels = order_ind)
@@ -1192,24 +1193,115 @@ a <- ggplot(results, aes(x=mid_ma, y=Score)) +
 gggeo_scale(a)
 
 ################################################################################
-# 5. ORDINAL LEAST REGRESSION
+# 5. RUNNING MODELS
 ################################################################################
 
+###################
+##### SETUP 1 #####
+###################
+
+model.data <- m.dat.rotate %>%
+  filter(is.na(Finalised_grainsize) == F) %>%
+  filter(is.na(Finalised_lith) == F) %>%
+  filter(is.na(p_lat) == F)
+
+# Assign specific grain size categories into either "Fine Grained" or "Coarse Grained"
+for (l in 1:nrow(model.data)){
+  if (model.data$Finalised_grainsize[l]=="Fine Grained"  | model.data$Finalised_grainsize[l] == "Slate" |
+      model.data$Finalised_grainsize[l]=="Chert" | model.data$Finalised_grainsize[l] =="Mudstone/Grainstone" |
+      model.data$Finalised_grainsize[l]=="Shale" | model.data$Finalised_grainsize[l] == "Wackestone" | model.data$Finalised_grainsize[l] == "Mudstone" | 
+      model.data$Finalised_grainsize[l]=="Siltstone" | model.data$Finalised_grainsize[l]== "Mudstone/Wackestone" |
+      model.data$Finalised_grainsize[l]=="Micrite" | model.data$Finalised_grainsize[l]== "Mudstone/Siltstone"){
+    model.data$Finalised_grainsize[l]<-"Fine Grained"
+  }
+  else if (model.data$Finalised_grainsize[l]=="Grainstone" | model.data$Finalised_grainsize[l] == "Packstone"| 
+           model.data$Finalised_grainsize[l]=="Sandstone" | model.data$Finalised_grainsize[l]=="Reefal" |
+           model.data$Finalised_grainsize[l] == "Coquina" |
+           model.data$Finalised_grainsize[l] == "Boundstone"){ 
+    model.data$Finalised_grainsize[l]<-"Coarse Grained"
+  }
+  else{
+    model.data$Finalised_grainsize[l] <- NA
+  }
+}
+
+# Remove remaining specimens without grain size
+model.data <- model.data %>%
+  filter(is.na(Finalised_grainsize) == F) 
+
 # Bin into periods
-g.m.period.dat <- bin_time(g.m.dat, bins = periods, method = 'majority')
+model.data <- bin_time(model.data, bins = periods, method = 'majority')
 
 # Create factors
 order_ind <- rev(c("Permian", "Carboniferous", "Devonian", "Silurian", "Ordovician"))
-g.m.period.dat$bin_assignment <- as.factor(g.m.period.dat$bin_assignment)
-g.m.period.dat$bin_assignment <- factor(g.m.period.dat$bin_assignment, levels = order_ind)
+model.data$bin_assignment <- as.factor(model.data$bin_assignment)
+model.data$bin_assignment <- factor(model.data$bin_assignment, levels = order_ind)
 
-g.m.period.dat$Preservation_score <- factor(g.m.period.dat$Preservation_score, 
+model.data$Preservation_score <- factor(model.data$Preservation_score, 
                                      levels = c("1", "2", "3", "4", "5"), 
                                      ordered = TRUE)
+
 # Remove families with low numbers (Cravenechinidae - 2 specimens) and NAs
-data <- g.m.period.dat %>%
+data <- model.data %>%
   filter(Family != 'Cravenechinidae') %>%
-  filter(!is.na(Family))
+  filter(!is.na(Family)) %>%
+  dplyr::select(Family, Genus, Species, Rank, Museum_Number, Preservation_score, Continent, 
+                Country, lat, lng, Formation, Age, Max_period, Min_period, Finalised_lith, 
+                Finalised_grainsize, max_ma, min_ma, bin_assignment, interval_mid_ma, p_lng, p_lat)
+
+
+###################
+##### SETUP 2 #####
+###################
+
+model.data <- m.dat %>%
+  filter(is.na(Finalised_grainsize) == F) %>%
+  filter(is.na(Finalised_lith) == F)
+
+# Assign specific grain size categories into either "Fine Grained" or "Coarse Grained"
+for (l in 1:nrow(model.data)){
+  if (model.data$Finalised_grainsize[l]=="Fine Grained"  | model.data$Finalised_grainsize[l] == "Slate" |
+      model.data$Finalised_grainsize[l]=="Chert" | model.data$Finalised_grainsize[l] =="Mudstone/Grainstone" |
+      model.data$Finalised_grainsize[l]=="Shale" | model.data$Finalised_grainsize[l] == "Wackestone" | model.data$Finalised_grainsize[l] == "Mudstone" | 
+      model.data$Finalised_grainsize[l]=="Siltstone" | model.data$Finalised_grainsize[l]== "Mudstone/Wackestone" |
+      model.data$Finalised_grainsize[l]=="Micrite" | model.data$Finalised_grainsize[l]== "Mudstone/Siltstone"){
+    model.data$Finalised_grainsize[l]<-"Fine Grained"
+  }
+  else if (model.data$Finalised_grainsize[l]=="Grainstone" | model.data$Finalised_grainsize[l] == "Packstone"| 
+           model.data$Finalised_grainsize[l]=="Sandstone" | model.data$Finalised_grainsize[l]=="Reefal" |
+           model.data$Finalised_grainsize[l] == "Coquina" |
+           model.data$Finalised_grainsize[l] == "Boundstone"){ 
+    model.data$Finalised_grainsize[l]<-"Coarse Grained"
+  }
+  else{
+    model.data$Finalised_grainsize[l] <- NA
+  }
+}
+
+# Bin into periods
+model.data <- bin_time(model.data, bins = periods, method = 'majority')
+
+# Create factors
+order_ind <- rev(c("Permian", "Carboniferous", "Devonian", "Silurian", "Ordovician"))
+model.data$bin_assignment <- as.factor(model.data$bin_assignment)
+model.data$bin_assignment <- factor(model.data$bin_assignment, levels = order_ind)
+
+model.data$Preservation_score <- factor(model.data$Preservation_score, 
+                                        levels = c("1", "2", "3", "4", "5"), 
+                                        ordered = TRUE)
+
+# Remove families with low numbers (Cravenechinidae - 2 specimens) and NAs
+data <- model.data %>%
+  filter(Family != 'Cravenechinidae') %>%
+  filter(!is.na(Family)) %>%
+  dplyr::select(Family, Genus, Species, Rank, Museum_Number, Preservation_score, Continent, 
+                Country, lat, lng, Formation, Age, Max_period, Min_period, Finalised_lith, 
+                Finalised_grainsize, max_ma, min_ma, bin_assignment, interval_mid_ma)
+
+
+#######################################
+##### ORDINAL LOGISTIC REGRESSION #####
+#######################################
 
 # Set up modelling
 samplesize <- 0.6*nrow(data)
@@ -1221,152 +1313,144 @@ table(datatrain$Finalised_lith, datatrain$Finalised_grainsize)
 table(datatrain$Finalised_lith, datatrain$Preservation_score)
 table(datatrain$Finalised_grainsize, datatrain$Preservation_score, datatrain$Finalised_lith)
 
+# Get test data
 datatest <- data[-index,]
 
-m1 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
-            bin_assignment + Finalised_lith*Finalised_grainsize, 
-          data = datatrain, Hess=TRUE)
-summary(m1)
-m2 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
-            bin_assignment, 
-          data = datatrain, Hess=TRUE)
-summary(m2)
-m3 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family, 
-          data = datatrain, Hess=TRUE)
-summary(m3)
-m4 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + bin_assignment, 
-          data = datatrain, Hess=TRUE)
-summary(m4)
-m5 <- polr(Preservation_score ~ Finalised_lith + bin_assignment + Family, 
-          data = datatrain, Hess=TRUE)
-summary(m5)
-m6 <- polr(Preservation_score ~ Finalised_grainsize + Family + bin_assignment, 
-          data = datatrain, Hess=TRUE)
-summary(m6)
-m7 <- polr(Preservation_score ~ Finalised_grainsize + bin_assignment, 
-          data = datatrain, Hess=TRUE)
-summary(m7)
-m8 <- polr(Preservation_score ~ Finalised_grainsize + Family, 
-          data = datatrain, Hess=TRUE)
-summary(m8)
-m9 <- polr(Preservation_score ~ Finalised_lith + bin_assignment, 
-          data = datatrain, Hess=TRUE)
-summary(m9)
-m10 <- polr(Preservation_score ~ Finalised_lith + Family, 
-          data = datatrain, Hess=TRUE)
-summary(m10)
-m11 <- polr(Preservation_score ~ Family + bin_assignment, 
-          data = datatrain, Hess=TRUE)
-summary(m11)
-m12 <- polr(Preservation_score ~ bin_assignment, 
-          data = datatrain, Hess=TRUE)
-summary(m12)
-m13 <- polr(Preservation_score ~ Family, 
-          data = datatrain, Hess=TRUE)
-summary(m13)
-m14 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Finalised_lith * Finalised_grainsize, 
-          data = datatrain, Hess=TRUE)
-summary(m14)
-m15 <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize,
-          data = datatrain, Hess=TRUE)
-summary(m15)
-m16 <- polr(Preservation_score ~ Finalised_lith,
-          data = datatrain, Hess=TRUE)
-summary(m16)
-m17 <- polr(Preservation_score ~ Finalised_grainsize,
-          data = datatrain, Hess=TRUE)
-summary(m17)
-m18 <- polr(Preservation_score ~ 1,
-          data = datatrain, Hess=TRUE)
-summary(m18)
+# Set full model
+full.model <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
+             lat + interval_mid_ma + Finalised_lith*Finalised_grainsize, 
+           data = datatrain, Hess=TRUE)
+summary(full.model)
 
-cand.mod <- list(m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, 
-                 m15, m16, m17, m18)
+# Alter global actions to allow for dredge
+options(na.action = "na.fail") 
 
-Modnames <- c()
-for(i in 1:length(cand.mod)){
-  temp.name <- as.character(cand.mod[[i]]$terms[[3]])
-  if(length(temp.name) > 1){
-    temp.name <- temp.name[-1]
-    temp.name <- paste(temp.name[1], temp.name[2], sep = " + ")
-  }
-  Modnames <- c(Modnames, temp.name)
-}
-mod.tab <- AICcmodavg::aictab(cand.set = cand.mod, modnames = Modnames, sort = T)
+# Get all models, ranked
+model.set <- dredge(full.model)
 
-# Best model
-m <- polr(formula = Preservation_score ~ Finalised_lith + Finalised_grainsize + 
-            Family + bin_assignment, data = datatrain, Hess = TRUE)
+# Revert global actions
+options(na.action = "na.omit")
+
+# Get best model
+m <- get.models(model.set, subset = 1)
 
 ## view a summary of the model
-summary(m)
-(ctable <- coef(summary(m)))
+summary(m[[1]])
+(ctable <- coef(summary(m[[1]])))
 
 ## calculate and store p values
 p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
 
 ## combined table
 (ctable <- cbind(ctable, "p value" = p))
-ci <- confint.default(m)
+ci <- confint.default(m[[1]])
 
 ## odds ratios
-exp(coef(m))
+exp(coef(m[[1]]))
 
 ## OR and CI
-test <-exp(cbind(OR = coef(m), ci))
+test <-exp(cbind(OR = coef(m[[1]]), ci))
 
 # Model quality
-predictPreservation_score <- predict(m,datatest)
+predictPreservation_score <- predict(m[[1]],datatest)
 table(datatest$Preservation_score, predictPreservation_score)
 predictPreservation_score <- as.character(predictPreservation_score)
 predictPreservation_score[is.na(predictPreservation_score)] <- "0"
 mean(as.character(datatest$Preservation_score) != as.character(predictPreservation_score))
 
 # Plotting 
-plot(Effect(focal.predictors = c("Finalised_grainsize", "Finalised_lith"),m),
+plot(Effect(focal.predictors = c("Finalised_grainsize", "Finalised_lith"),m[[1]]),
      main="Ordinal logistic regression; top model, showing lithology + grain size",
      axes = list(y=list(lab="Preservation Score (probability)")),
      xlab = "")
-plot(Effect(focal.predictors = c("bin_assignment", "Finalised_lith"),m),
-     main="Ordinal logistic regression; top model, showing age + lithology",
-     axes = list(y=list(lab="Preservation Score (probability)")), 
-     xlab = "")
-plot(Effect(focal.predictors = c("bin_assignment", "Finalised_grainsize"),m),
-     main="Ordinal logistic regression; top model, showing age + grain size",
+plot(Effect(focal.predictors = c("p_lat", "Finalised_lith"),m[[1]]),
+     main="Ordinal logistic regression; top model, showing palaeo-latitude + lithology",
      axes = list(y=list(lab="Preservation Score (probability)")), 
      xlab = "")
 
+###############################
+##### LOGISTIC REGRESSION #####
+###############################
+
+set_Pres_score <- function(data, level){
+  # if score = 5, class as 1, otherwise class as 0.
+  data$LR_Pres_score <- 0
+  if(length(level) > 1){
+    for(n in 1:length(level)){
+      data$LR_Pres_score[data$Preservation_score == level[n]] <- 1
+    }
+  }else{
+    # Set values in 'new_column' to 1 where the original_column is equal to 5
+    data$LR_Pres_score[data$Preservation_score == level] <- 1
+  }
+  data$LR_Pres_score <- as.factor(data$LR_Pres_score)
+  data <- data
+}
+
+# Set preservation level to explore
+data.LR <- set_Pres_score(data, c(4,5))
+
+# Set full model
+full.model <- glm(formula = LR_Pres_score ~ Finalised_lith + Finalised_grainsize + Family + 
+                    lat + interval_mid_ma + Finalised_lith*Finalised_grainsize, 
+    family = binomial(link = "logit"), 
+    data = data.LR)
+
+# Alter global actions to allow for dredge
+options(na.action = "na.fail") 
+
+# Get all models, ranked
+model.set <- dredge(full.model)
+
+# Revert global actions
+options(na.action = "na.omit")
+
+# Examine model set
+model.set
+
+# Get best model
+m <- get.models(model.set, subset = 1)
+
+## view a summary of the model
+summary(m[[1]])
+(ctable <- coef(summary(m[[1]])))
+
 ################################################################################
-# 6. CORRELATION TESTS
+# 7. CORRELATION TESTS
 ################################################################################
 
 #################
 ##### SETUP #####
 #################
 
-# Make columns for period, then bin time to stage level (this is so that both are in one dataset)
+# Make columns for period/series, then bin time to stage level (this is so that both are in one dataset)
 m.dat.period$Period <- as.character(m.dat.period$bin_assignment)
 m.dat.period$Period.no <- as.numeric(m.dat.period$bin_assignment)
 m.dat.period <- bin_time(m.dat.period, bins = stages, method = "majority")
+
+m.dat.series$Period <- as.character(m.dat.series$bin_assignment)
+m.dat.series$Period.no <- as.numeric(m.dat.series$bin_assignment)
+m.dat.period <- bin_time(m.dat.series, bins = stages, method = "majority")
 
 # Split out species and genus level information
 species.lvl <- m.dat.period %>%
   dplyr::filter(Rank == "Species") %>%
   dplyr::select(Genus, Species, Locality, bin_midpoint, Period, Period.no, Preservation_score) %>%
-  mutate(Combined_name = paste(Genus, Species, sep = " ")) %>%
-  distinct()
+  mutate(Combined_name = paste(Genus, Species, sep = " "))
+
 genus.lvl <- m.dat.period %>%
   dplyr::filter(Rank == "Genus") %>%
-  dplyr::select(Genus, Locality, bin_midpoint, Period, Period.no, Preservation_score) %>%
-  distinct()
+  dplyr::select(Genus, Locality, bin_midpoint, Period, Period.no, Preservation_score) 
 
 # Make tables of number of taxa per preservation score for each time frame
 stage.pres.spec <- as.data.frame(table(species.lvl$bin_midpoint, species.lvl$Preservation_score))
+colnames(stage.pres.spec) <- c("bin_midpoint", "Preservation_score", "Freq")
 stage.pres.gen <- as.data.frame(table(genus.lvl$bin_midpoint, genus.lvl$Preservation_score))
+colnames(stage.pres.gen) <- c("bin_midpoint", "Preservation_score", "Freq")
 period.pres.spec <- as.data.frame(table(species.lvl$Period, species.lvl$Preservation_score))
 period.pres.gen <- as.data.frame(table(genus.lvl$Period, genus.lvl$Preservation_score))
 
-# Run dplyr to get diversity/collections at genus and species level for each time frame
+# Run divDyn to get diversity/collections at genus and species level for each time frame
 div.stage.spec <- binstat(species.lvl, 
                           tax="Combined_name", 
                           bin="bin_midpoint", 
@@ -1387,11 +1471,18 @@ div.period.gen <- binstat(genus.lvl,
 order_ind <- c("Permian", "Carboniferous", "Devonian", "Silurian", "Ordovician")
 
 # Function to split out and reorganise data by preservation score for correlations
-split <- function(data, Var2, order = FALSE){
+split <- function(data, Var2, order = FALSE, stage = FALSE){
   for(t in Var2){
     temp.data <- filter(data, Var2 == t)
     if(order == TRUE){
       temp.data <- temp.data[match(order_ind, temp.data$Var1),]
+    }
+    if(stage == TRUE){
+      temp_stages <- stages[55:92,]
+      temp_stages$bin_midpoint <- (temp_stages$max_ma + temp_stages$min_ma)/2 
+      temp.data <- merge(temp_stages, temp.data, by = "bin_midpoint", all = TRUE)
+      temp.data$Preservation_score <- t
+      temp.data$Freq[is.na(temp.data$Freq)] <- 0
     }
     assign(paste(deparse(substitute(data)), t, sep = "."), temp.data, envir = .GlobalEnv)
   }
@@ -1400,8 +1491,8 @@ split <- function(data, Var2, order = FALSE){
 # Run function for each level
 split(period.pres.gen, period.pres.gen$Var2, order = TRUE)
 split(period.pres.spec, period.pres.spec$Var2, order = TRUE)
-split(stage.pres.spec, stage.pres.spec$Var2, order = FALSE)
-split(stage.pres.gen, stage.pres.gen$Var2, order = FALSE)
+split(stage.pres.spec, Var2 = stage.pres.spec$Preservation_score, order = FALSE, stage = TRUE)
+split(stage.pres.gen, Var2 = stage.pres.gen$Preservation_score, order = FALSE, stage = TRUE)
 
 ################################################
 ##### SPECIES LEVEL DIVERSITY CORRELATIONS #####
@@ -1549,6 +1640,8 @@ carb.colls <- carb.colls %>%
   dplyr::group_by(bin_midpoint) %>%
   dplyr::summarise(count = n(), lith = "carb") 
 
+carb.colls <- carb.colls[-1,]
+
 sili.colls <- sili.colls %>%
   dplyr::group_by(bin_midpoint) %>%
   dplyr::summarise(count = n(), lith = "sili")
@@ -1578,11 +1671,11 @@ names(sili.macro)[names(sili.macro) == 'b_age'] <- "max_ma"
 
 # Filter to relevant data
 carb.macro <- carb.macro %>%
-  filter(max_ma < 470) %>%
-  filter(min_ma > 252)
+  filter(max_ma < 485.41) %>%
+  filter(min_ma > 251.901)
 sili.macro <- sili.macro %>%
-  filter(max_ma < 470) %>%
-  filter(min_ma > 252)
+  filter(max_ma < 485.40) %>%
+  filter(min_ma > 251.901)
 
 # Bin data
 carb.macro <- bin_time(carb.macro, stages, method = "all")
@@ -1615,18 +1708,69 @@ gggeo_scale(a)
 
 ##### CORRELATIONS #####
 
-# Taphonomic grade vs. carbonate (PBDB)
-stage.spec.div.1 <- cor.test(log10(), log10(stage.pres.spec.1$Freq), method = 'spearman')
-# Taphonomic grade vs. siliclastic (PBDB)
+# Taphonomic grade vs. carbonate (PBDB), stage level
+stage.carb.PBDB.1 <- cor.test(log10(carb.colls$count), log10(stage.pres.spec.1$Freq), method = 'spearman')
+stage.carb.PBDB.2 <- cor.test(log10(carb.colls$count), log10(stage.pres.spec.2$Freq), method = 'spearman')
+stage.carb.PBDB.3 <- cor.test(log10(carb.colls$count), log10(stage.pres.spec.3$Freq), method = 'spearman')
+stage.carb.PBDB.4 <- cor.test(log10(carb.colls$count), log10(stage.pres.spec.4$Freq), method = 'spearman')
+stage.carb.PBDB.5 <- cor.test(log10(carb.colls$count), log10(stage.pres.spec.5$Freq), method = 'spearman')
 
-# Taphonomic grade vs. carbonate (Macrostrat)
+stage.PBDB.carb <-  rbind(c("stage", 1, "PBDB Carb", stage.carb.PBDB.1$estimate, stage.carb.PBDB.1$p.value),
+                         c("stage", 2, "PBDB Carb", stage.carb.PBDB.2$estimate, stage.carb.PBDB.2$p.value),
+                         c("stage", 3, "PBDB Carb", stage.carb.PBDB.3$estimate, stage.carb.PBDB.3$p.value),
+                         c("stage", 4, "PBDB Carb", stage.carb.PBDB.4$estimate, stage.carb.PBDB.4$p.value),
+                         c("stage", 5, "PBDB Carb", stage.carb.PBDB.5$estimate, stage.carb.PBDB.5$p.value))
 
-# Taphonomic grade vs. siliclastic (Macrostrat)
+# Taphonomic grade vs. siliclastic (PBDB), stage level
+stage.sili.PBDB.1 <- cor.test(log10(sili.colls$count), log10(stage.pres.spec.1$Freq), method = 'spearman')
+stage.sili.PBDB.2 <- cor.test(log10(sili.colls$count), log10(stage.pres.spec.2$Freq), method = 'spearman')
+stage.sili.PBDB.3 <- cor.test(log10(sili.colls$count), log10(stage.pres.spec.3$Freq), method = 'spearman')
+stage.sili.PBDB.4 <- cor.test(log10(sili.colls$count), log10(stage.pres.spec.4$Freq), method = 'spearman')
+stage.sili.PBDB.5 <- cor.test(log10(sili.colls$count), log10(stage.pres.spec.5$Freq), method = 'spearman')
 
+stage.PBDB.sili <-  rbind(c("stage", 1, "PBDB Sili", stage.sili.PBDB.1$estimate, stage.sili.PBDB.1$p.value),
+                         c("stage", 2, "PBDB Sili", stage.sili.PBDB.2$estimate, stage.sili.PBDB.2$p.value),
+                         c("stage", 3, "PBDB Sili", stage.sili.PBDB.3$estimate, stage.sili.PBDB.3$p.value),
+                         c("stage", 4, "PBDB Sili", stage.sili.PBDB.4$estimate, stage.sili.PBDB.4$p.value),
+                         c("stage", 5, "PBDB Sili", stage.sili.PBDB.5$estimate, stage.sili.PBDB.5$p.value))
 
+# Taphonomic grade vs. carbonate (Macrostrat), stage level
+stage.carb.macro.1 <- cor.test(log10(carb.macro$count), log10(stage.pres.spec.1$Freq), method = 'spearman')
+stage.carb.macro.2 <- cor.test(log10(carb.macro$count), log10(stage.pres.spec.2$Freq), method = 'spearman')
+stage.carb.macro.3 <- cor.test(log10(carb.macro$count), log10(stage.pres.spec.3$Freq), method = 'spearman')
+stage.carb.macro.4 <- cor.test(log10(carb.macro$count), log10(stage.pres.spec.4$Freq), method = 'spearman')
+stage.carb.macro.5 <- cor.test(log10(carb.macro$count), log10(stage.pres.spec.5$Freq), method = 'spearman')
+
+stage.macro.carb <-  rbind(c("stage", 1, "Macrostrat Carb", stage.carb.macro.1$estimate, stage.carb.macro.1$p.value),
+                         c("stage", 2, "Macrostrat Carb", stage.carb.macro.2$estimate, stage.carb.macro.2$p.value),
+                         c("stage", 3, "Macrostrat Carb", stage.carb.macro.3$estimate, stage.carb.macro.3$p.value),
+                         c("stage", 4, "Macrostrat Carb", stage.carb.macro.4$estimate, stage.carb.macro.4$p.value),
+                         c("stage", 5, "Macrostrat Carb", stage.carb.macro.5$estimate, stage.carb.macro.5$p.value))
+
+# Taphonomic grade vs. siliclastic (Macrostrat), stage level
+stage.sili.macro.1 <- cor.test(log10(sili.macro$count), log10(stage.pres.spec.1$Freq), method = 'spearman')
+stage.sili.macro.2 <- cor.test(log10(sili.macro$count), log10(stage.pres.spec.2$Freq), method = 'spearman')
+stage.sili.macro.3 <- cor.test(log10(sili.macro$count), log10(stage.pres.spec.3$Freq), method = 'spearman')
+stage.sili.macro.4 <- cor.test(log10(sili.macro$count), log10(stage.pres.spec.4$Freq), method = 'spearman')
+stage.sili.macro.5 <- cor.test(log10(sili.macro$count), log10(stage.pres.spec.5$Freq), method = 'spearman')
+
+stage.macro.sili <-  rbind(c("stage", 1, "Macrostrat sili", stage.sili.macro.1$estimate, stage.sili.macro.1$p.value),
+                         c("stage", 2, "Macrostrat sili", stage.sili.macro.2$estimate, stage.sili.macro.2$p.value),
+                         c("stage", 3, "Macrostrat sili", stage.sili.macro.3$estimate, stage.sili.macro.3$p.value),
+                         c("stage", 4, "Macrostrat sili", stage.sili.macro.4$estimate, stage.sili.macro.4$p.value),
+                         c("stage", 5, "Macrostrat sili", stage.sili.macro.5$estimate, stage.sili.macro.5$p.value))
+
+cor.results <- rbind(as.data.frame(stage.macro.carb), as.data.frame(stage.macro.sili), 
+                     as.data.frame(stage.PBDB.carb), as.data.frame(stage.PBDB.sili)
+)
+colnames(cor.results) <- c("Bin size", "Preservation Score", "vs.", "Rho", "p")
+cor.results$Rho <- signif(as.numeric(cor.results$Rho), digits = 3)
+cor.results$p <- signif(as.numeric(cor.results$p), digits = 8)
+
+write.csv(cor.results, "Macrostrat_PBDB_correlations.csv")
 
 ################################################################################
-# 7. MAPS
+# 8. MAPS
 ################################################################################
 
 ####################
@@ -1660,14 +1804,14 @@ get_grid_im <- function(data, res, name, ext){ # Data is first output from combi
 e <<- extent(-180, 180, -90, 90)
 
 ##### ALL SPECIMENS #####
-get_grid_im(m.dat, 2,  "Museum Echinoids", ext = e)
+get_grid_im(m.dat, 2,  "Echinoids", ext = e)
 
 ##### TAPH GRADES #####
-get_grid_im(dplyr::filter(m.dat, Preservation_score == 1), 2,  "Museum Echinoids", ext = e)
-get_grid_im(dplyr::filter(m.dat, Preservation_score == 2), 2,  "Museum Echinoids", ext = e)
-get_grid_im(dplyr::filter(m.dat, Preservation_score == 3), 2,  "Museum Echinoids", ext = e)
-get_grid_im(dplyr::filter(m.dat, Preservation_score == 4), 2,  "Museum Echinoids", ext = e)
-get_grid_im(dplyr::filter(m.dat, Preservation_score == 5), 2,  "Museum Echinoids", ext = e)
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 1), 2,  "Taphonomic Grade 1 Echinoids", ext = e)
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 2), 2,  "Taphonomic Grade 2 Echinoids", ext = e)
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 3), 2,  "Taphonomic Grade 3 Echinoids", ext = e)
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 4), 2,  "Taphonomic Grade 4 Echinoids", ext = e)
+get_grid_im(dplyr::filter(m.dat, Preservation_score == 5), 2,  "Taphonomic Grade 5 Echinoids", ext = e)
 
 ##################
 ##### PALAEO #####
