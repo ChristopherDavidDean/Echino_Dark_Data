@@ -31,6 +31,7 @@ library(wesanderson)
 library(viridis)
 library(raster)
 library(MuMIn)
+library(sjPlot)
 
 # Set working directory
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -107,6 +108,12 @@ m.dat$Min_period <- as.factor(m.dat$Min_period)
 m.dat$Min_period <- factor(m.dat$Max_period, levels = order_ind)
 m.dat$Min_period <- factor(m.dat$Min_period, levels = order_ind)
 
+# Load periods and rename columns for binning
+data(periods)
+colnames(periods)[1] <- "bin"
+colnames(periods)[2] <- "max_ma"
+colnames(periods)[3] <- "min_ma"
+
 ################################################################################
 # 3. PALAEOROTATION
 ################################################################################
@@ -159,25 +166,28 @@ make.prop.bar.plot <- function(dataset, fill, legend, colour, flip = FALSE){
   if(flip == TRUE){
     a <- a + coord_flip()
   }
-  return(a)get_grid_im <- function(data, res, name, ext){ # Data is first output from combine_data (fossil.colls). Res is chosen resolution in degrees. name is user inputted string related to data inputted, for display on graphs. 
-    xy <- cbind(as.double(data$lng), as.double(data$lat))
-    #xy <- unique(xy)
-    r <- raster::raster(ext = ext, res = res)
-    r <- raster::rasterize(xy, r, fun = 'count')
-    #r[r > 0] <- 1 # Remove if you want values instead of pure presence/absence.
-    countries <- maps::map("world", plot=FALSE, fill = TRUE) # find map to use as backdrop
-    countries <<- maptools::map2SpatialPolygons(countries, IDs = countries$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
-    mapTheme <- rasterVis::rasterTheme(region=viridis(8))
-    print(rasterVis::levelplot(r, margin=F, par.settings=mapTheme,  main = paste("Total ", (substitute(name)), " per Grid Cell", sep = "")) + #create levelplot for raster
-            #   latticeExtra::layer(sp.polygons(states, col = "white", fill = NA), under = T)  + # Plots state lines
-            latticeExtra::layer(sp.polygons(countries, col = 0, fill = "light grey"), under = T)) # Plots background colour
-    hist(r, breaks = 20,
-         main = paste((substitute(name)), " per Grid Cell", sep = ""),
-         xlab = "Number of Collections", ylab = "Number of Grid Cells",
-         col = "springgreen")
-    r <<- r
-  }
+  return(a)
 }
+  
+get_grid_im <- function(data, res, name, ext){ # Data is first output from combine_data (fossil.colls). Res is chosen resolution in degrees. name is user inputted string related to data inputted, for display on graphs. 
+  xy <- cbind(as.double(data$lng), as.double(data$lat))
+  #xy <- unique(xy)
+  r <- raster::raster(ext = ext, res = res)
+  r <- raster::rasterize(xy, r, fun = 'count')
+  #r[r > 0] <- 1 # Remove if you want values instead of pure presence/absence.
+  countries <- maps::map("world", plot=FALSE, fill = TRUE) # find map to use as backdrop
+  countries <<- maptools::map2SpatialPolygons(countries, IDs = countries$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
+  mapTheme <- rasterVis::rasterTheme(region=viridis(8))
+  print(rasterVis::levelplot(r, margin=F, par.settings=mapTheme,  main = paste("Total ", (substitute(name)), " per Grid Cell", sep = "")) + #create levelplot for raster
+          #   latticeExtra::layer(sp.polygons(states, col = "white", fill = NA), under = T)  + # Plots state lines
+          latticeExtra::layer(sp.polygons(countries, col = 0, fill = "light grey"), under = T)) # Plots background colour
+  hist(r, breaks = 20,
+       main = paste((substitute(name)), " per Grid Cell", sep = ""),
+       xlab = "Number of Collections", ylab = "Number of Grid Cells",
+       col = "springgreen")
+  r <<- r
+}
+
 
 # Set preservation score for Logistic Regression models
 set_Pres_score <- function(dataset, level){
@@ -232,3 +242,74 @@ get_grid_im <- function(data, res, name, ext){ # Data is first output from combi
        col = "springgreen")
   r <<- r
 }
+
+# Make grainsize into fine and coarse grained
+simple.grain <- function(data.set){
+  for (l in 1:nrow(data.set)){
+    if (data.set$Finalised_grainsize[l]=="Fine Grained"  | data.set$Finalised_grainsize[l] == "Slate" |
+        data.set$Finalised_grainsize[l]=="Chert" | data.set$Finalised_grainsize[l] =="Mudstone/Grainstone" |
+        data.set$Finalised_grainsize[l]=="Shale" | data.set$Finalised_grainsize[l] == "Wackestone" | data.set$Finalised_grainsize[l] == "Mudstone" | 
+        data.set$Finalised_grainsize[l]=="Siltstone" | data.set$Finalised_grainsize[l]== "Mudstone/Wackestone" |
+        data.set$Finalised_grainsize[l]=="Micrite" | data.set$Finalised_grainsize[l]== "Mudstone/Siltstone"){
+      data.set$Finalised_grainsize[l]<-"Fine Grained"
+    }
+    else if (data.set$Finalised_grainsize[l]=="Grainstone" | data.set$Finalised_grainsize[l] == "Packstone"| 
+             data.set$Finalised_grainsize[l]=="Sandstone" | data.set$Finalised_grainsize[l]=="Reefal" |
+             data.set$Finalised_grainsize[l] == "Coquina" |
+             data.set$Finalised_grainsize[l] == "Boundstone"){ 
+      data.set$Finalised_grainsize[l]<-"Coarse Grained"
+    }
+    else{
+      data.set$Finalised_grainsize[l] <- NA
+    }
+  }
+  data.set <- data.set
+}
+
+# Function for sorting jaccard similarity combined
+Jaccard.1 <- function(data.set, dependent, selection, ...){
+  # Transform to Preservation_score by genus matrix
+  jac.1 <- dcast(data.set,
+                 dependent ~ ...,
+                 value.var = "Count", fill = 0)
+  jac.1 <- as.data.frame(jac.1)
+  jac.2 <- jac.1[,-1]
+  rownames(jac.2) <- jac.1[,1]
+  
+  # Make binary (presence/absence)
+  binary <- jac.2
+  binary[binary > 0] <- 1
+  
+  # Get combinations
+  combos <- combn(rownames(binary), 2)
+  
+  # Loop through combos
+  for(a in 1:ncol(combos)){
+    temp <- binary[c(combos[1, a],combos[2, a]),]
+    temp <- vegdist(temp, method = "jaccard")
+    if(a == 1){
+      temp.res <- c(paste(combos[1, a], "v", 
+                          combos[2, a], sep = ""), 
+                    as.numeric(temp))
+    } else{
+      temp.res <- rbind(temp.res, c(paste(combos[1, a], "v", 
+                                          combos[2, a], sep = ""), 
+                                    as.numeric(temp)))
+    }
+  }
+  
+  # Final data wrangling
+  temp.res <- as.data.frame(temp.res)
+  temp.res <- cbind(temp.res, ncol(binary))
+  colnames(temp.res) <- c("Test", "Score", selection)
+  temp.res$Test <- factor(temp.res$Test, levels = c("1v2", "2v3", 
+                                                    "3v4", "4v5", 
+                                                    "1v3", "2v4", 
+                                                    "3v5", "1v4", 
+                                                    "2v5", "1v5"))
+  temp.res <- with(temp.res, temp.res[order(Test, Score),])
+  return(temp.res)
+}
+
+
+

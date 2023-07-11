@@ -55,24 +55,7 @@ g.m.dat <- m.dat %>%
   filter(is.na(Finalised_grainsize) == F) 
 
 # Assign specific grain size categories into either "Fine Grained" or "Coarse Grained"
-for (l in 1:nrow(g.m.dat)){
-  if (g.m.dat$Finalised_grainsize[l]=="Fine Grained"  | g.m.dat$Finalised_grainsize[l] == "Slate" |
-      g.m.dat$Finalised_grainsize[l]=="Chert" | g.m.dat$Finalised_grainsize[l] =="Mudstone/Grainstone" |
-      g.m.dat$Finalised_grainsize[l]=="Shale" | g.m.dat$Finalised_grainsize[l] == "Wackestone" | g.m.dat$Finalised_grainsize[l] == "Mudstone" | 
-      g.m.dat$Finalised_grainsize[l]=="Siltstone" | g.m.dat$Finalised_grainsize[l]== "Mudstone/Wackestone" |
-      g.m.dat$Finalised_grainsize[l]=="Micrite" | g.m.dat$Finalised_grainsize[l]== "Mudstone/Siltstone"){
-    g.m.dat$Finalised_grainsize[l]<-"Fine Grained"
-  }
-  else if (g.m.dat$Finalised_grainsize[l]=="Grainstone" | g.m.dat$Finalised_grainsize[l] == "Packstone"| 
-           g.m.dat$Finalised_grainsize[l]=="Sandstone" | g.m.dat$Finalised_grainsize[l]=="Reefal" |
-           g.m.dat$Finalised_grainsize[l] == "Coquina" |
-           g.m.dat$Finalised_grainsize[l] == "Boundstone"){ 
-    g.m.dat$Finalised_grainsize[l]<-"Coarse Grained"
-  }
-  else{
-    g.m.dat$Finalised_grainsize[l] <- NA
-  }
-}
+g.m.dat <- simple.grain(g.m.dat)
 
 # Remove remaining specimens without grain size
 g.m.dat <- g.m.dat %>%
@@ -145,12 +128,6 @@ test$expected # compare against what the test would have expected
 ##### SET UP - PERIOD LEVEL #####
 #################################
 
-# Load periods and rename columns for binning
-data(periods)
-colnames(periods)[1] <- "bin"
-colnames(periods)[2] <- "max_ma"
-colnames(periods)[3] <- "min_ma"
-
 # Bin into periods
 m.dat.period <- bin_time(m.dat, bins = periods, method = 'majority')
 
@@ -177,7 +154,7 @@ series <- read.csv("series.csv")
 
 # Bin into series
 order_ind <- c("Permian", "Pennsylvanian", "Mississippian", "Devonian", "Silurian", "Ordovician")
-m.dat.series <- bin_time(m.dat, bins = series, method = 'majority')
+m.dat.series <- palaeoverse::bin_time(m.dat, bins = series, method = 'majority')
 m.dat.series$bin_assignment <- as.factor(m.dat.series$bin_assignment)
 m.dat.series$bin_assignment <- factor(m.dat.series$bin_assignment, levels = order_ind)
 
@@ -415,46 +392,7 @@ jac.1 <- m.dat %>%
   group_by_all() %>%
   summarize(Count = n())
 
-# Transform to Preservation_score by genus matrix
-jac.1 <- dcast(jac.1,
-              Preservation_score ~ Genus,
-              value.var = "Count", fill = 0)
-jac.1 <- as.data.frame(jac.1)
-jac.2 <- jac.1[,-1]
-rownames(jac.2) <- jac.1[,1]
-
-# Make binary (presence/absence)
-binary <- jac.2
-binary[binary > 0] <- 1
-
-# Get combinations
-combos <- combn(rownames(binary), 2)
-
-# Loop through combos
-for(a in 1:ncol(combos)){
-  temp <- binary[c(combos[1, a],combos[2, a]),]
-  temp <- vegdist(temp, method = "jaccard")
-  if(a == 1){
-    temp.res <- c(paste(combos[1, a], "v", 
-                        combos[2, a], sep = ""), 
-                  as.numeric(temp))
-  } else{
-    temp.res <- rbind(temp.res, c(paste(combos[1, a], "v", 
-                                        combos[2, a], sep = ""), 
-                                  as.numeric(temp)))
-  }
-}
-
-# Final data wrangling
-temp.res <- as.data.frame(temp.res)
-temp.res <- cbind(temp.res, ncol(binary))
-colnames(temp.res) <- c("Test", "Score", "Genera")
-temp.res$Test <- factor(temp.res$Test, levels = c("1v2", "2v3", 
-                                                  "3v4", "4v5", 
-                                                  "1v3", "2v4", 
-                                                  "3v5", "1v4", 
-                                                  "2v5", "1v5"))
-temp.res <- with(temp.res, temp.res[order(Test, Score, Genera),])
+temp.res <- Jaccard.1(jac.1, selection = "Genus", ... = Genus)
 
 ######################################################
 ###### PRESERVATION SCORE V. GENERA THROUGH TIME #####
@@ -569,46 +507,7 @@ jac.1 <- f.m.dat %>%
   group_by_all() %>%
   summarize(Count = n())
 
-# Transform to Preservation_score by genus matrix
-jac.1 <- dcast(jac.1,
-               Preservation_score ~ Family,
-               value.var = "Count", fill = 0)
-jac.1 <- as.data.frame(jac.1)
-jac.2 <- jac.1[,-1]
-rownames(jac.2) <- jac.1[,1]
-
-# Make binary (presence/absence)
-binary <- jac.2
-binary[binary > 0] <- 1
-
-# Get combinations
-combos <- combn(rownames(binary), 2)
-
-# Loop through combos
-for(a in 1:ncol(combos)){
-  temp <- binary[c(combos[1, a],combos[2, a]),]
-  temp <- vegdist(temp, method = "jaccard")
-  if(a == 1){
-    temp.res <- c(paste(combos[1, a], "v", 
-                        combos[2, a], sep = ""), 
-                  as.numeric(temp))
-  } else{
-    temp.res <- rbind(temp.res, c(paste(combos[1, a], "v", 
-                                        combos[2, a], sep = ""), 
-                                  as.numeric(temp)))
-  }
-}
-
-# Final data wrangling
-temp.res <- as.data.frame(temp.res)
-temp.res <- cbind(temp.res, ncol(binary))
-colnames(temp.res) <- c("Test", "Score", "Family")
-temp.res$Test <- factor(temp.res$Test, levels = c("1v2", "2v3", 
-                                                  "3v4", "4v5", 
-                                                  "1v3", "2v4", 
-                                                  "3v5", "1v4", 
-                                                  "2v5", "1v5"))
-temp.res <- with(temp.res, temp.res[order(Test, Score, Family),])
+temp.res <- Jaccard.1(jac.1, selection = "Family", ... = Family)
 
 ######################################################
 ###### PRESERVATION SCORE V. FAMILY THROUGH TIME #####
@@ -951,25 +850,7 @@ test <- m.dat.period %>%
   filter(is.na(Finalised_grainsize) == F) %>%
   dplyr::select(Genus, Finalised_grainsize, bin_assignment) 
 
-for (l in 1:nrow(test)){
-  if (test$Finalised_grainsize[l]=="Fine Grained"  | test$Finalised_grainsize[l] == "Slate" |
-      test$Finalised_grainsize[l]=="Chert" | test$Finalised_grainsize[l] =="Mudstone/Grainstone" |
-      test$Finalised_grainsize[l]=="Shale" | test$Finalised_grainsize[l] == "Wackestone" | test$Finalised_grainsize[l] == "Mudstone" | 
-      test$Finalised_grainsize[l]=="Siltstone" | test$Finalised_grainsize[l]== "Mudstone/Wackestone" |
-      test$Finalised_grainsize[l]=="Micrite" | test$Finalised_grainsize[l]== "Mudstone/Siltstone"){
-    test$Finalised_grainsize[l]<-"Fine Grained"
-  }
-  else if (test$Finalised_grainsize[l]=="Grainstone" | test$Finalised_grainsize[l] == "Packstone"| 
-           test$Finalised_grainsize[l]=="Sandstone" | test$Finalised_grainsize[l]=="Reefal" |
-           test$Finalised_grainsize[l] == "Coquina" |
-           test$Finalised_grainsize[l] == "Boundstone"){ 
-    test$Finalised_grainsize[l]<-"Coarse Grained"
-  }
-  else{
-    test$Finalised_grainsize[l] <- NA
-  }
-}
-
+test <- simple.grain(test)
 
 for(t in unique(test$bin_assignment)) {
   
@@ -1071,25 +952,7 @@ test <- m.dat.period %>%
   filter(is.na(Finalised_grainsize) == F) %>%
   dplyr::select(Family, Finalised_grainsize, bin_assignment) 
 
-for (l in 1:nrow(test)){
-  if (test$Finalised_grainsize[l]=="Fine Grained"  | test$Finalised_grainsize[l] == "Slate" |
-      test$Finalised_grainsize[l]=="Chert" | test$Finalised_grainsize[l] =="Mudstone/Grainstone" |
-      test$Finalised_grainsize[l]=="Shale" | test$Finalised_grainsize[l] == "Wackestone" | test$Finalised_grainsize[l] == "Mudstone" | 
-      test$Finalised_grainsize[l]=="Siltstone" | test$Finalised_grainsize[l]== "Mudstone/Wackestone" |
-      test$Finalised_grainsize[l]=="Micrite" | test$Finalised_grainsize[l]== "Mudstone/Siltstone"){
-    test$Finalised_grainsize[l]<-"Fine Grained"
-  }
-  else if (test$Finalised_grainsize[l]=="Grainstone" | test$Finalised_grainsize[l] == "Packstone"| 
-           test$Finalised_grainsize[l]=="Sandstone" | test$Finalised_grainsize[l]=="Reefal" |
-           test$Finalised_grainsize[l] == "Coquina" |
-           test$Finalised_grainsize[l] == "Boundstone"){ 
-    test$Finalised_grainsize[l]<-"Coarse Grained"
-  }
-  else{
-    test$Finalised_grainsize[l] <- NA
-  }
-}
-
+test <- simple.grain(test)
 
 for(t in unique(test$bin_assignment)) {
   
@@ -1169,24 +1032,7 @@ model.data <- m.dat.rotate %>%
   filter(is.na(p_lat) == F)
 
 # Assign specific grain size categories into either "Fine Grained" or "Coarse Grained"
-for (l in 1:nrow(model.data)){
-  if (model.data$Finalised_grainsize[l]=="Fine Grained"  | model.data$Finalised_grainsize[l] == "Slate" |
-      model.data$Finalised_grainsize[l]=="Chert" | model.data$Finalised_grainsize[l] =="Mudstone/Grainstone" |
-      model.data$Finalised_grainsize[l]=="Shale" | model.data$Finalised_grainsize[l] == "Wackestone" | model.data$Finalised_grainsize[l] == "Mudstone" | 
-      model.data$Finalised_grainsize[l]=="Siltstone" | model.data$Finalised_grainsize[l]== "Mudstone/Wackestone" |
-      model.data$Finalised_grainsize[l]=="Micrite" | model.data$Finalised_grainsize[l]== "Mudstone/Siltstone"){
-    model.data$Finalised_grainsize[l]<-"Fine Grained"
-  }
-  else if (model.data$Finalised_grainsize[l]=="Grainstone" | model.data$Finalised_grainsize[l] == "Packstone"| 
-           model.data$Finalised_grainsize[l]=="Sandstone" | model.data$Finalised_grainsize[l]=="Reefal" |
-           model.data$Finalised_grainsize[l] == "Coquina" |
-           model.data$Finalised_grainsize[l] == "Boundstone"){ 
-    model.data$Finalised_grainsize[l]<-"Coarse Grained"
-  }
-  else{
-    model.data$Finalised_grainsize[l] <- NA
-  }
-}
+model.data <- simple.grain(model.data)
 
 # Remove remaining specimens without grain size
 model.data <- model.data %>%
@@ -1222,24 +1068,7 @@ model.data <- m.dat %>%
   filter(is.na(Finalised_lith) == F)
 
 # Assign specific grain size categories into either "Fine Grained" or "Coarse Grained"
-for (l in 1:nrow(model.data)){
-  if (model.data$Finalised_grainsize[l]=="Fine Grained"  | model.data$Finalised_grainsize[l] == "Slate" |
-      model.data$Finalised_grainsize[l]=="Chert" | model.data$Finalised_grainsize[l] =="Mudstone/Grainstone" |
-      model.data$Finalised_grainsize[l]=="Shale" | model.data$Finalised_grainsize[l] == "Wackestone" | model.data$Finalised_grainsize[l] == "Mudstone" | 
-      model.data$Finalised_grainsize[l]=="Siltstone" | model.data$Finalised_grainsize[l]== "Mudstone/Wackestone" |
-      model.data$Finalised_grainsize[l]=="Micrite" | model.data$Finalised_grainsize[l]== "Mudstone/Siltstone"){
-    model.data$Finalised_grainsize[l]<-"Fine Grained"
-  }
-  else if (model.data$Finalised_grainsize[l]=="Grainstone" | model.data$Finalised_grainsize[l] == "Packstone"| 
-           model.data$Finalised_grainsize[l]=="Sandstone" | model.data$Finalised_grainsize[l]=="Reefal" |
-           model.data$Finalised_grainsize[l] == "Coquina" |
-           model.data$Finalised_grainsize[l] == "Boundstone"){ 
-    model.data$Finalised_grainsize[l]<-"Coarse Grained"
-  }
-  else{
-    model.data$Finalised_grainsize[l] <- NA
-  }
-}
+model.data <- simple.grain(model.data)
 
 # Bin into periods
 model.data <- bin_time(model.data, bins = periods, method = 'majority')
@@ -1271,17 +1100,17 @@ samplesize <- 0.6*nrow(data.set)
 index <- sample(seq_len(nrow(data.set)), size = samplesize)
 
 #Creating training and test set 
-datatrain <- data.st[index,]
+datatrain <- data.set[index,]
 table(datatrain$Finalised_lith, datatrain$Finalised_grainsize)
 table(datatrain$Finalised_lith, datatrain$Preservation_score)
 table(datatrain$Finalised_grainsize, datatrain$Preservation_score, datatrain$Finalised_lith)
 
 # Get test data
-datatest <- data.st[-index,]
+datatest <- data.set[-index,]
 
 # Set full model
 full.model <- polr(Preservation_score ~ Finalised_lith + Finalised_grainsize + Family + 
-             lat + interval_mid_ma + Finalised_lith*Finalised_grainsize, 
+             lat + p_lat + interval_mid_ma + Finalised_lith*Finalised_grainsize, 
            data = datatrain, Hess=TRUE)
 summary(full.model)
 
@@ -1298,7 +1127,7 @@ options(na.action = "na.omit")
 m <- get.models(model.set, subset = 1)
 
 ## view a summary of the model
-summary(m[[1]])
+summary(m[[1]]) 
 (ctable <- coef(summary(m[[1]])))
 
 ## calculate and store p values
@@ -1322,12 +1151,14 @@ predictPreservation_score[is.na(predictPreservation_score)] <- "0"
 mean(as.character(datatest$Preservation_score) != as.character(predictPreservation_score))
 
 # Plotting 
-plot(Effect(focal.predictors = c("Finalised_grainsize", "Finalised_lith"),m[[1]]),
+plot_model(m[[1]], title = "Preservation Score")
+
+plot(effects::Effect(focal.predictors = c("Finalised_grainsize", "Finalised_lith"),m[[1]]),
      main="Ordinal logistic regression; top model, showing lithology + grain size",
      axes = list(y=list(lab="Preservation Score (probability)")),
      xlab = "")
-plot(Effect(focal.predictors = c("p_lat", "Finalised_lith"),m[[1]]),
-     main="Ordinal logistic regression; top model, showing palaeo-latitude + lithology",
+plot(effects::Effect(focal.predictors = c("lat", "Finalised_lith"),m[[1]]),
+     main="Ordinal logistic regression; top model, showing latitude + lithology",
      axes = list(y=list(lab="Preservation Score (probability)")), 
      xlab = "")
 
@@ -1340,7 +1171,7 @@ data.LR <- set_Pres_score(data.set, c(4,5))
 
 # Set full model
 full.model <- glm(formula = LR_Pres_score ~ Finalised_lith + Finalised_grainsize + Family + 
-                    lat + interval_mid_ma + Finalised_lith*Finalised_grainsize, 
+                    lat + p_lat + interval_mid_ma + Finalised_lith*Finalised_grainsize, 
     family = binomial(link = "logit"), 
     data = data.LR)
 
@@ -1348,7 +1179,7 @@ full.model <- glm(formula = LR_Pres_score ~ Finalised_lith + Finalised_grainsize
 options(na.action = "na.fail") 
 
 # Get all models, ranked
-model.set <- dredge(full.model)
+model.set <- MuMIn::dredge(full.model)
 
 # Revert global actions
 options(na.action = "na.omit")
@@ -1357,11 +1188,14 @@ options(na.action = "na.omit")
 model.set
 
 # Get best model
-m <- get.models(model.set, subset = 1)
+m <- MuMIn::get.models(model.set, subset = 1)
 
 ## view a summary of the model
 summary(m[[1]])
 (ctable <- coef(summary(m[[1]])))
+
+plot_model(m[[1]], show.values = TRUE, value.offset = 0.3,
+           title = "Preservation Score: 4+5")
 
 ################################################################################
 # 7. CORRELATION TESTS
@@ -1423,6 +1257,11 @@ split(period.pres.gen, period.pres.gen$Var2, order = TRUE)
 split(period.pres.spec, period.pres.spec$Var2, order = TRUE)
 split(stage.pres.spec, Var2 = stage.pres.spec$Preservation_score, order = FALSE, stage = TRUE)
 split(stage.pres.gen, Var2 = stage.pres.gen$Preservation_score, order = FALSE, stage = TRUE)
+
+temp_stages <- stages[55:92,]
+temp_stages$bin_midpoint <- (temp_stages$max_ma + temp_stages$min_ma)/2 
+div.stage.spec <- merge(temp_stages, div.stage.spec, by = "bin_midpoint", all.x = T)
+div.stage.gen <- merge(temp_stages, div.stage.gen, by = "bin_midpoint", all.x = T)
 
 ################################################
 ##### SPECIES LEVEL DIVERSITY CORRELATIONS #####
@@ -1535,7 +1374,9 @@ cor.results <- rbind(as.data.frame(stage.div.spec), as.data.frame(stage.coll.spe
       )
 colnames(cor.results) <- c("Bin size", "Preservation Score", "vs.", "Rho", "p")
 cor.results$Rho <- signif(as.numeric(cor.results$Rho), digits = 3)
-cor.results$p <- signif(as.numeric(cor.results$p), digits = 8)
+cor.results$p <- signif(as.numeric(cor.results$p), digits = 5)
+
+write.csv(cor.results, "Updated_correlations.csv")
 
 #################################
 ##### SED TYPE CORRELATIONS #####
@@ -1611,6 +1452,7 @@ sili.macro <- sili.macro %>%
 carb.macro <- bin_time(carb.macro, stages, method = "all")
 sili.macro <- bin_time(sili.macro, stages, method = "all")
 
+# Count
 carb.macro  <- carb.macro  %>%
   dplyr::group_by(bin_midpoint) %>%
   dplyr::summarise(count = n(), lith = "carb") 
@@ -1618,6 +1460,7 @@ sili.macro <- sili.macro  %>%
   dplyr::group_by(bin_midpoint) %>%
   dplyr::summarise(count = n(), lith = "sili") 
 
+# Col_area
 carb.macro <- carb.macro  %>%
   dplyr::group_by(bin_midpoint) %>%
   dplyr::summarise(count = sum(col_area), lith = "carb") 
@@ -1631,7 +1474,7 @@ a <- ggplot(macro, aes(x=bin_midpoint, y=count)) +
   geom_line(aes(colour = lith)) +
   scale_x_reverse() +
   theme_bw() +
-  ylab("Jaccard Similarity") +
+  ylab("Count") +
   xlab("Time (Ma)") +
   geom_point(aes(color = lith)) 
 gggeo_scale(a)
@@ -1697,7 +1540,7 @@ colnames(cor.results) <- c("Bin size", "Preservation Score", "vs.", "Rho", "p")
 cor.results$Rho <- signif(as.numeric(cor.results$Rho), digits = 3)
 cor.results$p <- signif(as.numeric(cor.results$p), digits = 8)
 
-write.csv(cor.results, "Macrostrat_PBDB_correlations.csv")
+write.csv(cor.results, "Macrostrat_Count_PBDB_correlations.csv")
 
 ################################################################################
 # 8. MAPS
@@ -1719,7 +1562,3 @@ get_grid_im(dplyr::filter(m.dat, Preservation_score == 2), 2,  "Taphonomic Grade
 get_grid_im(dplyr::filter(m.dat, Preservation_score == 3), 2,  "Taphonomic Grade 3 Echinoids", ext = e)
 get_grid_im(dplyr::filter(m.dat, Preservation_score == 4), 2,  "Taphonomic Grade 4 Echinoids", ext = e)
 get_grid_im(dplyr::filter(m.dat, Preservation_score == 5), 2,  "Taphonomic Grade 5 Echinoids", ext = e)
-
-##################
-##### PALAEO #####
-##################
