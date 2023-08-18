@@ -74,7 +74,7 @@ states <<- maptools::map2SpatialPolygons(states, IDs = states$names, proj4string
 
 get_grid_im <- function(data, res, name, ext){ # Data is first output from combine_data (fossil.colls). Res is chosen resolution in degrees. name is user inputted string related to data inputted, for display on graphs. 
   xy <- cbind(as.double(data$lng), as.double(data$lat))
-  xy <- unique(xy)
+  #xy <- unique(xy)
   r <- raster::raster(ext = ext, res = res)
   r <- raster::rasterize(xy, r, fun = 'count')
   #r[r > 0] <- 1 # Remove if you want values instead of pure presence/absence.
@@ -90,7 +90,6 @@ get_grid_im <- function(data, res, name, ext){ # Data is first output from combi
        col = "springgreen")
   r <<- r
 }
-
 
 #=================================== GET_EXTENT ==========================================
 

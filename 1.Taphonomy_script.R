@@ -1166,12 +1166,18 @@ plot(effects::Effect(focal.predictors = c("lat", "Finalised_lith"),m[[1]]),
 ##### LOGISTIC REGRESSION #####
 ###############################
 
-# Set preservation level to explore
-data.LR <- set_Pres_score(data.set, c(4,5))
+# Set preservation level to explore and get dataset
+pres.score <- 5
+data.LR <- set_Pres_score(data.set, c(pres.score))
+colnames(data.LR)[colnames(data.LR) == "lat"] <- "Latitude"
+colnames(data.LR)[colnames(data.LR) == "p_lat"] <- "Palaeo-latitude"
+colnames(data.LR)[colnames(data.LR) == "interval_mid_ma"] <- "Age (Ma)"
+colnames(data.LR)[colnames(data.LR) == "Finalised_lith"] <- "Lithology"
+colnames(data.LR)[colnames(data.LR) == "Finalised_grainsize"] <- "Grainsize"
 
 # Set full model
-full.model <- glm(formula = LR_Pres_score ~ Finalised_lith + Finalised_grainsize + Family + 
-                    lat + p_lat + interval_mid_ma + Finalised_lith*Finalised_grainsize, 
+full.model <- glm(formula = LR_Pres_score ~ Lithology + Grainsize + Family + 
+                    Latitude + `Age (Ma)` + `Palaeo-latitude` + Lithology*Grainsize, 
     family = binomial(link = "logit"), 
     data = data.LR)
 
@@ -1192,10 +1198,94 @@ m <- MuMIn::get.models(model.set, subset = 1)
 
 ## view a summary of the model
 summary(m[[1]])
-(ctable <- coef(summary(m[[1]])))
 
-plot_model(m[[1]], show.values = TRUE, value.offset = 0.3,
-           title = "Preservation Score: 4+5")
+# Save formula as character
+best.form <- as.character(formula(m[[1]]))
+
+# Save a table of coefficients
+(ctable <- as.data.frame(coef(summary(m[[1]]))))
+
+# Save covariates to remove for failing
+(to.remove <- row.names(ctable)[ctable$`Std. Error` > 10 |ctable$`Std. Error` < -10])
+
+# Save order for changing colour
+ctable$color <- 0
+ctable$color[ctable$Estimate > 0] <- '#377EB8'
+ctable$color[ctable$Estimate < 0] <- '#E41A1C'
+ctable$color[ctable$`Pr(>|z|)` > 0.05] <- '#A9A9A9'
+my.colors <- ctable$color[ctable$`Std. Error` < 10 & ctable$`Std. Error` > -10]
+my.colors <- my.colors[-1]
+my.colors.2 <- as.numeric(as.factor(my.colors))
+my.colors.3 <- c('#377EB8','#A9A9A9','#E41A1C')
+
+# Odds Ratio plot
+(p <- plot_model(m[[1]], 
+           show.values = TRUE, 
+           value.offset = 0.3,
+           rm.terms = to.remove,
+           title = paste("Preservation Score: ", pres.score, sep = ""),
+           vline.color = 'red',
+           group.terms = my.colors.2,
+           color = my.colors.3
+           ))
+
+p <- p + ggtitle(paste("Preservation Score: ", pres.score, sep = "")) +
+  labs(subtitle = paste("Model = Preservation score ~ ", best.form[3], sep = ""))
+
+# Save the plot
+pdf(paste("Plot_Odds_ratio_pres_", pres.score, ".pdf", sep = ""), 
+    width = par("din")[1], 
+    height = par("din")[2])
+print(p)
+dev.off()
+
+# Log-odds plot
+(p <- plot_model(m[[1]], 
+           show.values = TRUE, 
+           value.offset = 0.3,
+           rm.terms = to.remove,
+           group.terms = my.colors.2,
+           color = my.colors.3,
+           transform = NULL
+           ))
+
+p <- p + ggtitle(paste("Preservation Score: ", pres.score, sep = "")) +
+  labs(subtitle = paste("Model = Preservation score ~ ", best.form[3], sep = ""))
+
+# Save the plot
+pdf(paste("Plot_Log_odds_pres_", pres.score, ".pdf", sep = ""), 
+    width = par("din")[1], 
+    height = par("din")[2])
+print(p)
+dev.off()
+
+# Probability plot
+(p <- plot_model(m[[1]], 
+                 show.values = TRUE, 
+                 value.offset = 0.3,
+                 rm.terms = to.remove,
+                 group.terms = my.colors.2,
+                 color = my.colors.3,
+                 transform = "plogis"
+))
+
+p <- p + ggtitle(paste("Preservation Score: ", pres.score, sep = "")) +
+  labs(subtitle = paste("Model = Preservation score ~ ", best.form[3], sep = ""))
+
+# Save the plot
+pdf(paste("Plot_Probability_pres_", pres.score, ".pdf", sep = ""), 
+    width = par("din")[1], 
+    height = par("din")[2])
+print(p)
+dev.off()
+
+# Save models
+write.csv(model.set, 
+          file = paste("LR_all_models_pres_", pres.score, ".csv", sep = ""), 
+          row.names = FALSE)
+write.csv(ctable, 
+          file = paste("LR_best_model_pres_", pres.score, ".csv", sep = ""), 
+          row.names = TRUE)
 
 ################################################################################
 # 7. CORRELATION TESTS
