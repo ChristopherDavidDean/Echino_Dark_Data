@@ -1,61 +1,61 @@
 "","X","Bin.size","Preservation.Score","vs.","Rho","p","BH"
-"1",1,"stage",1,"diversity (species)",0.629,0.002956,0.0168914285714286
-"2",2,"stage",2,"diversity (species)",0.329,0.15639,0.2662
-"3",3,"stage",3,"diversity (species)",0.641,0.0023152,0.0154346666666667
-"4",4,"stage",4,"diversity (species)",0.723,0.00031517,0.0031517
-"5",5,"stage",5,"diversity (species)",0.543,0.013407,0.0383057142857143
-"6",6,"stage",1,"collections (species)",0.753,0.00012568,0.0025136
-"7",7,"stage",2,"collections (species)",0.572,0.0084188,0.025904
-"8",8,"stage",3,"collections (species)",0.649,0.0019546,0.0154346666666667
-"9",9,"stage",4,"collections (species)",0.591,0.0060825,0.0221181818181818
-"10",10,"stage",5,"collections (species)",0.237,0.31358,0.415122580645161
-"11",11,"period",1,"diversity (species)",0.6,0.35,0.4375
-"12",12,"period",2,"diversity (species)",0.9,0.083333,0.166666
-"13",13,"period",3,"diversity (species)",0.564,0.32172,0.415122580645161
-"14",14,"period",4,"diversity (species)",0.975,0.0048182,0.0207988
-"15",15,"period",5,"diversity (species)",0.4,0.51667,0.59048
-"16",16,"period",1,"collections (species)",0.8,0.13333,0.242418181818182
-"17",17,"period",2,"collections (species)",1,0.016667,0.0416675
-"18",18,"period",3,"collections (species)",0.462,0.43377,0.510317647058824
-"19",19,"period",4,"collections (species)",0.821,0.088587,0.168737142857143
-"20",20,"period",5,"collections (species)",0.3,0.68333,0.738735135135135
-"21",21,"stage",1,"diversity (genera)",0.599,0.0067671,0.022557
-"22",22,"stage",2,"diversity (genera)",0.273,0.25858,0.3694
-"23",23,"stage",3,"diversity (genera)",0.525,0.021028,0.0494776470588235
-"24",24,"stage",4,"diversity (genera)",0.622,0.0044948,0.0207988
-"25",25,"stage",5,"diversity (genera)",0.245,0.31248,0.415122580645161
-"26",26,"stage",1,"collections (genera)",0.887,4.2762e-07,1.71048e-05
-"27",27,"stage",2,"collections (genera)",0.741,0.00028152,0.0031517
-"28",28,"stage",3,"collections (genera)",0.336,0.15972,0.2662
-"29",29,"stage",4,"collections (genera)",0.614,0.0051997,0.0207988
-"30",30,"stage",5,"collections (genera)",0.113,0.64639,0.718211111111111
-"31",31,"period",1,"diversity (genera)",0.205,0.74058,0.759569230769231
-"32",32,"period",2,"diversity (genera)",0.462,0.43377,0.510317647058824
-"33",33,"period",3,"diversity (genera)",0.711,0.17862,0.285792
-"34",34,"period",4,"diversity (genera)",0.688,0.19889,0.305984615384615
-"35",35,"period",5,"diversity (genera)",0.918,0.028008,0.06224
-"36",36,"period",1,"collections (genera)",1,0.016667,0.0416675
-"37",37,"period",2,"collections (genera)",0.9,0.083333,0.166666
+"1",1,"stage",1,"diversity (species)",0.629,0.002956,0.011085
+"2",2,"stage",2,"diversity (species)",0.329,0.15639,0.2178
+"3",3,"stage",3,"diversity (species)",0.641,0.0023152,0.0092608
+"4",4,"stage",4,"diversity (species)",0.723,0.00031517,0.00219438222
+"5",5,"stage",5,"diversity (species)",0.543,0.013407,0.0335175
+"6",6,"stage",1,"collections (species)",0.753,0.00012568,0.0012568
+"7",7,"stage",2,"collections (species)",0.572,0.0084188,0.0219620869565217
+"8",8,"stage",3,"collections (species)",0.649,0.0019546,0.00837685714285714
+"9",9,"stage",4,"collections (species)",0.591,0.0060825,0.0173785714285714
+"10",10,"stage",5,"collections (species)",0.237,0.31358,0.376296
+"11",11,"period",1,"diversity (species)",0.6,0.35,0.403846153846154
+"12",12,"period",2,"diversity (species)",0.9,0.083333,0.136673905945946
+"13",13,"period",3,"diversity (species)",0.564,0.32172,0.378494117647059
+"14",14,"period",4,"diversity (species)",0.975,0.0048182,0.0160606666666667
+"15",15,"period",5,"diversity (species)",0.4,0.51667,0.56364
+"16",16,"period",1,"collections (species)",0.8,0.13333,0.190471428571429
+"17",17,"period",2,"collections (species)",1,0.016667,0.0370377777777778
+"18",18,"period",3,"collections (species)",0.462,0.43377,0.481966666666667
+"19",19,"period",4,"collections (species)",0.821,0.088587,0.139874210526316
+"20",20,"period",5,"collections (species)",0.3,0.68333,0.719294736842105
+"21",21,"stage",1,"diversity (genera)",0.599,0.0067671,0.0184557272727273
+"22",22,"stage",2,"diversity (genera)",0.273,0.25858,0.323225
+"23",23,"stage",3,"diversity (genera)",0.525,0.021028,0.04506
+"24",24,"stage",4,"diversity (genera)",0.622,0.0044948,0.015864
+"25",25,"stage",5,"diversity (genera)",0.245,0.31248,0.376296
+"26",26,"stage",1,"collections (genera)",0.887,4.2762e-07,2.56572e-05
+"27",27,"stage",2,"collections (genera)",0.741,0.00028152,0.00219438222
+"28",28,"stage",3,"collections (genera)",0.336,0.15972,0.2178
+"29",29,"stage",4,"collections (genera)",0.614,0.0051997,0.0164201052631579
+"30",30,"stage",5,"collections (genera)",0.113,0.64639,0.692560714285714
+"31",31,"period",1,"diversity (genera)",0.205,0.74058,0.75313220338983
+"32",32,"period",2,"diversity (genera)",0.462,0.43377,0.481966666666667
+"33",33,"period",3,"diversity (genera)",0.711,0.17862,0.23816
+"34",34,"period",4,"diversity (genera)",0.688,0.19889,0.259421739130435
+"35",35,"period",5,"diversity (genera)",0.918,0.028008,0.0542090322580645
+"36",36,"period",1,"collections (genera)",1,0.016667,0.0370377777777778
+"37",37,"period",2,"collections (genera)",0.9,0.083333,0.136673905945946
 "38",38,"period",3,"collections (genera)",0.0513,0.93471,0.93471
-"39",39,"period",4,"collections (genera)",0.671,0.21517,0.31877037037037
-"40",40,"period",5,"collections (genera)",0.224,0.71769,0.755463157894737
-"41",1,"stage",1,"Macrostrat Carb (count)",0.25,0.13081859,0.13081859
-"42",2,"stage",2,"Macrostrat Carb (count)",0.505,0.0012098329,0.00345666542857143
-"43",3,"stage",3,"Macrostrat Carb (count)",0.313,0.055980543,0.0799722042857143
-"44",4,"stage",4,"Macrostrat Carb (count)",0.437,0.0060409542,0.0120819084
-"45",5,"stage",5,"Macrostrat Carb (count)",0.362,0.025660895,0.0423377384615385
-"46",6,"stage",1,"Macrostrat sili (count)",0.291,0.076746819,0.09593352375
-"47",7,"stage",2,"Macrostrat sili (count)",0.615,4.0483959e-05,0.000202419795
-"48",8,"stage",3,"Macrostrat sili (count)",0.489,0.0018465717,0.00410349266666667
-"49",9,"stage",4,"Macrostrat sili (count)",0.624,2.8181008e-05,0.000202419795
-"50",10,"stage",5,"Macrostrat sili (count)",0.548,0.00036573037,0.00121910123333333
-"51",11,"stage",1,"Macrostrat Carb (area)",0.284,0.084282242,0.0991555788235294
-"52",12,"stage",2,"Macrostrat Carb (area)",0.395,0.014075341,0.0255915290909091
-"53",13,"stage",3,"Macrostrat Carb (area)",0.253,0.12544772,0.13081859
-"54",14,"stage",4,"Macrostrat Carb (area)",0.358,0.02751953,0.0423377384615385
-"55",15,"stage",5,"Macrostrat Carb (area)",0.256,0.12073345,0.13081859
-"56",16,"stage",1,"Macrostrat sili (area)",0.291,0.076746819,0.09593352375
-"57",17,"stage",2,"Macrostrat sili (area)",0.615,4.0483959e-05,0.000202419795
-"58",18,"stage",3,"Macrostrat sili (area)",0.489,0.0018465717,0.00410349266666667
-"59",19,"stage",4,"Macrostrat sili (area)",0.624,2.8181008e-05,0.000202419795
-"60",20,"stage",5,"Macrostrat sili (area)",0.548,0.00036573037,0.00121910123333333
+"39",39,"period",4,"collections (genera)",0.671,0.21517,0.274685106382979
+"40",40,"period",5,"collections (genera)",0.224,0.71769,0.742437931034483
+"41",1,"stage",1,"Macrostrat Carb (count)",0.25,0.13081859,0.190471428571429
+"42",2,"stage",2,"Macrostrat Carb (count)",0.505,0.0012098329,0.00659908854545454
+"43",3,"stage",3,"Macrostrat Carb (count)",0.313,0.055980543,0.104963518125
+"44",4,"stage",4,"Macrostrat Carb (count)",0.437,0.0060409542,0.0173785714285714
+"45",5,"stage",5,"Macrostrat Carb (count)",0.362,0.025660895,0.0530915068965517
+"46",6,"stage",1,"Macrostrat sili (count)",0.291,0.076746819,0.135435562941176
+"47",7,"stage",2,"Macrostrat sili (count)",0.615,4.0483959e-05,0.000485807508
+"48",8,"stage",3,"Macrostrat sili (count)",0.489,0.0018465717,0.00837685714285714
+"49",9,"stage",4,"Macrostrat sili (count)",0.624,2.8181008e-05,0.000485807508
+"50",10,"stage",5,"Macrostrat sili (count)",0.548,0.00036573037,0.00219438222
+"51",11,"stage",1,"Macrostrat Carb (area)",0.284,0.084282242,0.136673905945946
+"52",12,"stage",2,"Macrostrat Carb (area)",0.395,0.014075341,0.0337808184
+"53",13,"stage",3,"Macrostrat Carb (area)",0.253,0.12544772,0.18817158
+"54",14,"stage",4,"Macrostrat Carb (area)",0.358,0.02751953,0.0542090322580645
+"55",15,"stage",5,"Macrostrat Carb (area)",0.256,0.12073345,0.185743769230769
+"56",16,"stage",1,"Macrostrat sili (area)",0.291,0.076746819,0.135435562941176
+"57",17,"stage",2,"Macrostrat sili (area)",0.615,4.0483959e-05,0.000485807508
+"58",18,"stage",3,"Macrostrat sili (area)",0.489,0.0018465717,0.00837685714285714
+"59",19,"stage",4,"Macrostrat sili (area)",0.624,2.8181008e-05,0.000485807508
+"60",20,"stage",5,"Macrostrat sili (area)",0.548,0.00036573037,0.00219438222
