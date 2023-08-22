@@ -1676,7 +1676,20 @@ colnames(cor.results) <- c("Bin size", "Preservation Score", "vs.", "Rho", "p")
 cor.results$Rho <- signif(as.numeric(cor.results$Rho), digits = 3)
 cor.results$p <- signif(as.numeric(cor.results$p), digits = 8)
 
-write.csv(cor.results, "Macrostrat_Count_Area_correlations.csv")
+write.csv(cor.results, "Results/Macrostrat_Count_Area_correlations.csv")
+
+#########################
+##### BH CORRECTION #####
+#########################
+
+corrs <- read.csv("Results/Updated_correlations.csv")
+corrs2 <- read.csv("Results/Macrostrat_Count_Area_correlations.csv")
+corrs$BH <- p.adjust(corrs$p, method = "BH")
+corrs2$BH <- p.adjust(corrs2$p, method = "BH")
+
+corrs.all <- rbind(corrs, corrs2)
+
+write.csv(corrs.all, "Results/Correlations_BH_Corrected.csv")
 
 ################################################################################
 # 8. MAPS
