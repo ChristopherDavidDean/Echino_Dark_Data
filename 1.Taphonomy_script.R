@@ -17,6 +17,31 @@ source("0.Setup.R")
 # 2. BAR PLOTS AND CHI SQUARED
 ################################################################################
 
+##########################
+##### TAXONOMIC RANK #####
+##########################
+
+# Make bar plot
+make.bar.plot(m.dat, m.dat$Rank, "Taxonomic Rank", colour = "Zissou1", FALSE)
+
+# Make proportional bar plot
+make.prop.bar.plot(m.dat, m.dat$Rank, "Taxonomic Rank", colour = "Zissou1", FALSE)
+
+# Format into table and run Chi Squared test
+test <- chisq.test(table(m.dat$Preservation_score, m.dat$Rank))
+test
+test$expected # compare against what the test would have expected
+
+# Mosaic plot
+mosaic(~ Preservation_score + Rank,
+       direction = c("v", "h"),
+       data = m.dat,
+       labeling_args = list(
+         set_varnames = c(Preservation_score = "Preservation Score", 
+                          Rank = "Taxonomic Rank")),
+       shade = TRUE
+)
+
 #####################
 ##### LITHOLOGY #####
 #####################
