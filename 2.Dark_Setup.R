@@ -300,7 +300,7 @@ m.p.dat <- m.dat.occ %>%
 ##### All Echinoids #####
 
 # Load Paleozoic echinoid dataset
-pb.dat <- read.csv("pbdb_data_21092023.csv", skip = 19)
+pb.dat <- read.csv("Specimen_data/pbdb_data_21092023.csv", skip = 19)
 
 # Assign occurrences to bins
 pb.dat <- bin_time(pb.dat, bins = stages, method = 'majority')
@@ -325,20 +325,20 @@ pb.dat$Continent[which(pb.dat$Continent == "Americas")] <- "South America"
 ##### All occurrences #####
 
 # Load all palaeozoic occurrences
-pb.all <- read.csv("all_palaeozoic_binned.csv")
+pb.all <- read.csv("Specimen_data/all_palaeozoic_binned.csv")
 # Load all palaeozoic echinodermata occurrences
-pb.echino <- read.csv("Echinodermata.csv", skip = 19)
+pb.echino <- read.csv("Specimen_data/Echinodermata.csv", skip = 19)
 pb.echino <- pb.echino %>%
   dplyr::filter(max_ma < 485.4000) %>%
   dplyr::filter(min_ma > 251.2000)
 pb.echino <- bin_time(pb.echino, bins = stages, method = 'majority')
 
 # Assign occurrences to bins (WARNING: Takes a looooong time)
-#pb.all <- read.csv("all_palaeozoic.csv", skip = 18)
+#pb.all <- read.csv("Specimen_data/all_palaeozoic.csv", skip = 18)
 #pb.all <- pb.all %>%
 #  filter(max_ma < stages[nrow(stages), 2])
 #pb.all <- bin_time(pb.all, bins = stages, method = 'majority')
-#write.csv(pb.all, file = "all_palaeozoic_binned.csv")
+#write.csv(pb.all, file = "Specimen_data/all_palaeozoic_binned.csv")
 
 ###########################################
 ###### FINALISE DATASETS FOR ANALYSIS #####

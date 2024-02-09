@@ -250,3 +250,79 @@ get_extent <- function(data){
   minLng <- round_any((min(data$lng) - 1), 0.5) #get value for defining extent, and increase by x for visualisation purposes
   e <<- extent(minLng, maxLng, minLat, maxLat) # build extent object
 }
+
+
+
+# Function for plotting the output of divDyn.
+divDyn.plot <- function(estD_output, leg = "none"){
+  ## The output is a 'list' object so we'll need to convert it into a dataframe and clean it up before plotting
+  estD_plotting <- bind_rows(estD_output) # binds rows of a list
+  
+  ## Ensure that the quorum level column is being treated as a 'factor' to avoid errors while plotting:
+  estD_plotting$quorum_level <- as.factor(estD_plotting$quorum_level)
+  
+  ## Create a colour gradient for as many colours as you have quorum levels:
+  teal_gradient <- scales::seq_gradient_pal("turquoise", "darkslategrey", "Lab")(seq(0, 1, length.out = 4))
+  
+  stages.red <- stages %>%
+    dplyr::select(bin, bin_midpoint) %>%
+    dplyr::rename(bin_assignment = bin)
+  
+  estD_plotting <- left_join(estD_plotting, stages.red, by = "bin_assignment")
+  
+  divDyn_plot <- ggplot(estD_plotting, aes(x = bin_midpoint, 
+                                           y = divSIB, 
+                                           colour = quorum_level)) + 
+    ## Each quorum level is called individually to be plotted:
+    ## Set our line and point sizes (and shapes):
+    geom_line(linewidth = 1) +
+    scale_shape_manual(values=c(15, 16, 17)) +
+    ## Add our colours, theme, and axes labels:
+    scale_colour_manual(values = teal_gradient) +
+    scale_x_reverse() +
+    ylim(0, 6) +
+    xlim(477.7000, 251.9020) +
+    geom_point(size = 3) +
+    labs(x = "Time (Ma)", y = "Coverage rarified richness") +
+    theme_bw() +
+    labs(color='Quorum level') +
+    theme(panel.grid.major = element_line(colour = "white"), 
+          panel.grid.minor = element_line(colour = "white")) +
+    theme(legend.position = "right") + 
+    theme(plot.margin = margin(0.1,0.2,0, 1, "cm"), 
+          axis.title.y = element_text(hjust= 0.8, size = 9),
+          axis.title.x = element_text(size = 9))
+  if(leg == "none"){
+    divDyn_plot <- divDyn_plot + theme(legend.position = "none", 
+                                       axis.text.x = element_blank(), 
+                                       axis.ticks.x = element_blank(), 
+                                       axis.title.x = element_blank())
+  }
+  return(gggeo_scale(divDyn_plot))
+}
+
+##################################
+##### SQS DIVERSITY - DIVDYN #####
+##################################
+
+##### DIVERSITY ANALYSIS #####
+# Generate results
+divdyn.m <- run.div(m.only.dat, Rank = "Genus", type = "SQS") 
+divdyn.pb <- run.div(pb.only.dat, Rank = "Genus", type = "SQS") 
+divdyn.p <- run.div(pub.all.dat, Rank = "Genus", type = "SQS") 
+divdyn.a <- run.div(all.dat, Rank = "Genus", type = "SQS") 
+
+# Setup for plotting
+a <- divDyn.plot(divdyn.m, "none")
+b <- divDyn.plot(divdyn.pb,"none")
+c <- divDyn.plot(divdyn.p, "none")
+d <- divDyn.plot(divdyn.a, "A")
+
+# Plot together
+(p13 <- ggarrange(a, b, c, d, 
+                  align='hv',
+                  labels = c("A", "B", "C", "D"),
+                  nrow = 4))
+
+ggsave("Dark_data_graphs/13.SQS.div.divDyn.png", plot = p13, 
+       device = "png", type = "cairo")
