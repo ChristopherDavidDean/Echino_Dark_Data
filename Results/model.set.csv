@@ -1,0 +1,6 @@
+"Formula","Score"
+"`Age (Ma)` + `Palaeo-latitude` + Grainsize + Latitude + Lithology + Grainsize:Lithology + 1",1
+"`Age (Ma)` + `Palaeo-latitude` + Grainsize + Latitude + Lithology + 1",2
+"`Age (Ma)` + `Palaeo-latitude` + Grainsize + 1",3
+"`Palaeo-latitude` + Grainsize + Latitude + Lithology + Grainsize:Lithology + 1",4
+"`Palaeo-latitude` + Grainsize + Latitude + Lithology + 1",5

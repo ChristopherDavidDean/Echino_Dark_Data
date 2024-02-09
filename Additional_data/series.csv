@@ -1,0 +1,7 @@
+bin,max_ma,mid_ma,min_ma,abbr,color
+Permian,298.9,275.401,251.902,P,#F04028
+Pennsylvanian,323.2,311.05,298.9,Pn,#99C2B5
+Mississippian,358.9,341.05,323.2,Ms,#678F66
+Devonian,419.2,389.05,358.9,D,#CB8C37
+Silurian,443.8,431.5,419.2,S,#B3E1B6
+Ordovician,485.4,464.6,443.8,O,#009270
