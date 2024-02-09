@@ -2,3 +2,18 @@
 .Rhistory
 .RData
 .Ruserdata
+Dark_data_graphs/0.Mosaic.preservation.pdf
+*.png
+*.pdf
+*.html
+Raja_paper_scripts/00-get_data.R
+Raja_paper_scripts/01-prop_per_aff_country.R
+Raja_paper_scripts/02-network_analysis.R
+Raja_paper_scripts/03-SEM.R
+Raja_paper_scripts/S01 - Summary Statistics.R
+Raja_paper_scripts/S02 - regions.R
+Raja_paper_scripts/S03 - Network Analysis.R
+Raja_paper_scripts/S04 - taxa.R
+Raja_paper_scripts/S05 - diversity.R
+Specimen_data/all_palaeozoic_binned.csv
+Specimen_data/all_palaeozoic.csv
