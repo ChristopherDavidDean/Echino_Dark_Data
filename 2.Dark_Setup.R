@@ -79,7 +79,7 @@ m.dat <- m.dat %>%
   filter(is.na(max_ma) == F)
 
 # Assign occurrences to bins
-m.dat <- bin_time(m.dat, bins = stages, method = 'majority')
+m.dat <- bin_time(occdf = m.dat, bins = stages, method = 'majority')
 
 # Create factors for later
 order_ind <- c("Permian", "Pennsylvanian", "Mississippian", "Devonian", "Silurian", "Ordovician")
@@ -98,7 +98,7 @@ colnames(periods)[3] <- "min_ma"
 ##### PERIOD LEVEL TIME #####
 
 # Bin into periods
-m.dat.period <- bin_time(m.dat, bins = periods, method = 'majority')
+m.dat.period <- bin_time(occdf = m.dat, bins = periods, method = 'majority')
 
 # Create factors
 order_ind <- c("Permian", "Carboniferous", "Devonian", "Silurian", "Ordovician")
@@ -121,7 +121,7 @@ series <- read.csv("Additional_data/series.csv")
 
 # Bin into series
 order_ind <- c("Permian", "Pennsylvanian", "Mississippian", "Devonian", "Silurian", "Ordovician")
-m.dat.series <- palaeoverse::bin_time(m.dat, bins = series, method = 'majority')
+m.dat.series <- palaeoverse::bin_time(occdf = m.dat, bins = series, method = 'majority')
 m.dat.series$bin_assignment <- as.factor(m.dat.series$bin_assignment)
 m.dat.series$bin_assignment <- factor(m.dat.series$bin_assignment, levels = order_ind)
 
@@ -179,8 +179,8 @@ sili.macro <- sili.macro %>%
 ##### STAGE #####
 
 # Bin data
-carb.macro <- bin_time(carb.macro, stages, method = "all")
-sili.macro <- bin_time(sili.macro, stages, method = "all")
+carb.macro <- bin_time(occdf = carb.macro, bins = stages, method = "all")
+sili.macro <- bin_time(occdf = sili.macro, bins = stages, method = "all")
 
 # Count
 carb.macro.count  <- carb.macro  %>%
@@ -204,8 +204,8 @@ macro.count <- rbind(carb.macro.count, sili.macro.count)
 ##### PERIOD #####
 
 # Bin data
-carb.macro.period <- bin_time(carb.macro, series, method = "majority")
-sili.macro.period <- bin_time(sili.macro, series, method = "majority")
+carb.macro.period <- bin_time(occdf = carb.macro, bins = series, method = "majority")
+sili.macro.period <- bin_time(occdf = sili.macro, bins = series, method = "majority")
 
 # Count
 carb.macro.count.period  <- carb.macro.period  %>%
@@ -303,7 +303,7 @@ m.p.dat <- m.dat.occ %>%
 pb.dat <- read.csv("Specimen_data/pbdb_data_21092023.csv", skip = 19)
 
 # Assign occurrences to bins
-pb.dat <- bin_time(pb.dat, bins = stages, method = 'majority')
+pb.dat <- bin_time(occdf = pb.dat, bins = stages, method = 'majority')
 
 # Palaeorotate
 pb.dat <- palaeorotate(pb.dat, 
@@ -331,7 +331,7 @@ pb.echino <- read.csv("Specimen_data/Echinodermata.csv", skip = 19)
 pb.echino <- pb.echino %>%
   dplyr::filter(max_ma < 485.4000) %>%
   dplyr::filter(min_ma > 251.2000)
-pb.echino <- bin_time(pb.echino, bins = stages, method = 'majority')
+pb.echino <- bin_time(occdf = pb.echino, bins = stages, method = 'majority')
 
 # Assign occurrences to bins (WARNING: Takes a looooong time)
 #pb.all <- read.csv("Specimen_data/all_palaeozoic.csv", skip = 18)
@@ -408,11 +408,17 @@ pb.only.dat <- simple.grain(pb.only.dat)
 pub.all.dat <- simple.grain(pub.all.dat)
 all.dat <- simple.grain(all.dat)
 
+# Make new column for simplified rank
+m.only.dat <- simple.rank(m.only.dat)
+pb.only.dat <- simple.rank(pb.only.dat)
+pub.all.dat <- simple.rank(pub.all.dat)
+all.dat <- simple.rank(all.dat)
+
 # Bin according to series level data
-pb.only.series <- bin_time(pb.only.dat, bins = series, method = 'majority')
-m.only.series <- bin_time(m.only.dat, bins = series, method = 'majority')
-pub.all.series <- bin_time(pub.all.dat, bins = series, method = 'majority')
-all.series <- bin_time(all.dat, bins = series, method = 'majority')
+pb.only.series <- bin_time(occdf = pb.only.dat, bins = series, method = 'majority')
+m.only.series <- bin_time(occdf = m.only.dat, bins = series, method = 'majority')
+pub.all.series <- bin_time(occdf = pub.all.dat, bins = series, method = 'majority')
+all.series <- bin_time(occdf = all.dat, bins = series, method = 'majority')
 
 ####################
 ###### SUMMARY #####

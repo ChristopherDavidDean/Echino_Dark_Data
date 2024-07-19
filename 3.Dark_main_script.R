@@ -61,6 +61,9 @@ source("2.Dark_Setup.R")
 ##############################
 
 # Format into table and run Chi Squared test
+m.dat$Museum_only[m.dat$Museum_only == 0] <- "Published"
+m.dat$Museum_only[m.dat$Museum_only == 1] <- "Dark Data"
+
 chisq.test(table(m.dat$Preservation_score, m.dat$Museum_only))
 
 # compare against what the test would have expected
@@ -70,9 +73,8 @@ chisq.test(table(m.dat$Preservation_score, m.dat$Museum_only))$expected
 vcd::mosaic(~ Preservation_score + Museum_only,
        direction = c("v", "h"),
        data = m.dat,
-       labeling_args = list(just_labels = "right", 
-                            set_varnames = c(Preservation_score = "Preservation Score", 
-                                             Museum_only = "Only found in museum")),
+       labeling_args = list(set_varnames = c(Preservation_score = "Preservation Score", 
+                                             Museum_only = "")),
        shade = TRUE
 )
 
@@ -91,12 +93,15 @@ Rank <- setup.table(m.only.dat,
                     pb.only.dat, 
                     pub.all.dat, 
                     all.dat,
-                    "Rank", 
+                    "Rank_simp", 
                     pivot = T, 
                     useNA = F)
+names(Rank)[names(Rank) == "Rank_simp"] <- "Rank"
+
 (p1 <- table.plots(Rank, "Rank", colour = c(wes_palette("Zissou1"), 
                                            wes_palette("Royal1"),
-                                           wes_palette("Royal2"))))
+                                           wes_palette("Royal2")), 
+                   labs = c("A", "B")))
 
 ggsave("Dark_data_graphs/1.Rank.props.png", plot = p1, 
        device = "png", type = "cairo")
@@ -114,7 +119,19 @@ cc <- setup.table(m.only.dat,
                     "Country", 
                     pivot = F, 
                     useNA = F)
+
+# Add continents
+cc$Continent <- countrycode(sourcevar = cc$Country, origin = "country.name", 
+                            destination = "continent")
+
+# Reorder columns
+cc <- cc[,c(6,1,2,3,4,5)]
+
+# Sum rows
 colSums(cc != 0)
+
+# Write table
+write.csv(cc, file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_1.csv")
 
 ##### CONTINENTS #####
 Cont <- setup.table(m.only.dat, 
@@ -125,7 +142,8 @@ Cont <- setup.table(m.only.dat,
                     pivot = T, 
                     useNA = F)
 (p2 <- table.plots(Cont, "Continent", colour = c(wes_palette("Royal2"), 
-                                                 wes_palette("Royal1"))))
+                                                 wes_palette("Royal1")), 
+                   labs = c("C", "D")))
 
 ggsave("Dark_data_graphs/2.Cont.props.png", plot = p2, 
        device = "png", type = "cairo")
@@ -140,14 +158,15 @@ lith <- setup.table(m.only.dat,
                     useNA = T)
 # Cleaning data
 lith <- rbind(lith[1,], lith[2,], lith[3,] + lith[4,], lith[5,])
-lith <- tidyr::pivot_longer(lith, cols = c("Museum", "PBDB", "Published", "All"))
+lith <- tidyr::pivot_longer(lith, cols = c("Dark Data", "PBDB", "Published", "All"))
 lith$value <- as.numeric(lith$value)
 names(lith)[names(lith) == "Finalised_lith"] <- "Lithology"
 
 # Plotting data
 (p3 <- table.plots(lith, "Lithology", removeNA = T, colour = c(wes_palette("Zissou1"), 
                                                                wes_palette("Royal1"),
-                                                               wes_palette("Royal2"))))
+                                                               wes_palette("Royal2")), 
+                   labs = c("E", "F")))
 
 ggsave("Dark_data_graphs/3.Lith.props.png", plot = p3, 
        device = "png", type = "cairo")
@@ -163,9 +182,20 @@ Grain <- setup.table(m.only.dat,
 names(Grain)[names(Grain) == "Finalised_grainsize_simp"] <- "Grainsize"
 
 (p4 <- table.plots(Grain, "Grainsize", removeNA = T, 
-                   colour = c(wes_palette("Darjeeling2"))))
+                   colour = c(wes_palette("Darjeeling2")), 
+                   labs = c("G", "H")))
 
 ggsave("Dark_data_graphs/4.Grain.props.png", plot = p4, 
+       device = "png", type = "cairo")
+
+##### COMBINED #####
+
+(f1 <- ggarrange(p1, p2, p3, p4, 
+                align='hv',
+                nrow = 2, 
+                ncol = 2))
+
+ggsave("Dark_data_graphs/Final_Figs/1.Combined.plot.png", plot = f1, 
        device = "png", type = "cairo")
 
 ################################################################################
@@ -214,10 +244,13 @@ get_grid(pb.echino, res, e)
 # Find how many unique cells each dataset occupies
 totalcells <- length(unique(pb.all.spat.bin$cells)) + 17
 totalecells <- length(unique(pb.echino.spat.bin$cells)) + 61
-length(unique(pb.only.dat.spat.bin$cells))
-length(unique(m.only.dat.space.spat.bin$cells))
-length(unique(pub.all.dat.spat.bin$cells))
-length(unique(all.dat.spat.bin$cells)) 
+pb.cells <- length(unique(pb.only.dat.spat.bin$cells))
+m.cells <- length(unique(m.only.dat.space.spat.bin$cells))
+pub.cells <- length(unique(pub.all.dat.spat.bin$cells))
+all.cells <- length(unique(all.dat.spat.bin$cells)) 
+
+# Cell increase through addition of DD
+(all.cells - pub.cells)/pub.cells
 
 # Function to find percentage of cells covered by each dataset, in relation to PBDB collections
 find.perc <- function(cell.data){
@@ -322,7 +355,7 @@ colnames(results) <- c("bin", "bin_midpoint", "all.cells",
 
 colnames(results)[5] <-"Data"
 results$Data[which(results$Data == "all.dat")] <- "All data"
-results$Data[which(results$Data == "m.dat")] <- "Museum"
+results$Data[which(results$Data == "m.dat")] <- "Dark Data"
 results$Data[which(results$Data == "pb.dat")] <- "PBDB"
 results$Data[which(results$Data == "pub.dat")] <- "Published"
 results$Data <- as.factor(results$Data)
@@ -361,8 +394,8 @@ stacked.results %>%
                    Median.m = median(value, na.rm = T))
 
 stacked.results[stacked.results == "shared"] <- "Shared"
-stacked.results[stacked.results == "unique.m"] <- "Museum only"
-stacked.results[stacked.results == "unique.p"] <- "Published record only"
+stacked.results[stacked.results == "unique.m"] <- "Dark Data"
+stacked.results[stacked.results == "unique.p"] <- "Published record"
 stacked.results[stacked.results == "ratio"] <- "Ratio"
 
 #################
@@ -375,7 +408,8 @@ a <- stacked.results %>%
   geom_line() +
   scale_x_reverse() +
   theme_bw() +
-  ylab("Ratio of unique \nmuseum/published gridcells") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  ylab("Ratio of unique \nDark Data/published gridcells") +
   guides(fill=guide_legend(title="Preservation score")) +
   theme(panel.grid.major = element_line(colour = "white"), 
         panel.grid.minor = element_line(colour = "white"), 
@@ -412,7 +446,56 @@ b <- stacked.results %>%
                  heights = c(0.55, 0.7),
                  legend = "bottom"))
 
+
+b <- stacked.results %>%
+  dplyr::filter(name == "Ratio") %>%
+  ggplot(aes(x=bin_midpoint, y=value)) + 
+  geom_line() +
+  scale_x_reverse() +
+  theme_bw() +
+  coord_geo(dat = series2, 
+            xlim = c(485.4, 251.902),
+            rot = list(0),
+            size = 4,
+            pos = list("b"),
+            abbrv = T) +
+  xlab("Time (Ma)") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  ylab("Ratio of unique \nDark Data/published gridcells") +
+  guides(fill=guide_legend(title="Preservation score")) +
+  theme(panel.grid.major = element_line(colour = "white"), 
+        panel.grid.minor = element_line(colour = "white")) +
+  guides(alpha = "none")
+
+a <- stacked.results %>%
+  dplyr::filter(name != "Ratio") %>%
+  ggplot(aes(x=bin_midpoint, y=value, fill=name)) + 
+  geom_area() +
+  scale_x_reverse() +
+  theme_bw() +
+  ylab("Number of occupied 1° grid cells") +
+  guides(fill=guide_legend(title="Occupied Grid Cells")) +
+  scale_fill_manual(values=(rev(wes_palette("Chevalier1")[1:3]))) +
+  theme(panel.grid.major = element_line(colour = "white"), 
+        panel.grid.minor = element_line(colour = "white"), 
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  guides(alpha = "none")
+
+(p6.5 <- ggarrange(a, b, 
+                   align='v',
+                   labels = c("A", "B"),
+                   nrow = 2,
+                   ncol = 1, 
+                   heights = c(0.55, 0.7),
+                   legend = "bottom", 
+                   common.legend = T))
+
 ggsave("Dark_data_graphs/6.5.Occupancy.time.new.png", plot = p6.5, 
+       device = "png", type = "cairo")
+
+ggsave("Dark_data_graphs/Final_Figs/Fig_3.png", plot = p6.5, 
        device = "png", type = "cairo")
 
 b <- ggplot(results, aes(x=bin_midpoint, y=occ.echino)) + 
@@ -472,45 +555,45 @@ wide.results <- dcast(results, bin+bin_midpoint+all.cells+echino.cells~Data,
 
 # Log data
 wide.results$all.cells <- log10(wide.results$all.cells)
-wide.results$Museum <- log10(wide.results$Museum)
+wide.results$`Dark Data` <- log10(wide.results$`Dark Data`)
 wide.results$PBDB <- log10(wide.results$PBDB)
 wide.results$Published <- log10(wide.results$Published)
 wide.results$echino.cells<- log10(wide.results$echino.cells)
 wide.results$`All data` <- log10(wide.results$`All data`)
 
 # Occupancy vs. occupancy
-cor1 <- cor.test(wide.results$Museum, wide.results$PBDB, method = "spearman")
-cor2 <- cor.test(wide.results$Museum, wide.results$Published, method = "spearman")
-cor3 <- cor.test(wide.results$Museum, wide.results$`All data`, method = "spearman")
+cor1 <- cor.test(wide.results$`Dark Data`, wide.results$PBDB, method = "spearman")
+cor2 <- cor.test(wide.results$`Dark Data`, wide.results$Published, method = "spearman")
+cor3 <- cor.test(wide.results$`Dark Data`, wide.results$`All data`, method = "spearman")
 cor4 <- cor.test(wide.results$PBDB, wide.results$Published, method = "spearman")
 cor5 <- cor.test(wide.results$PBDB, wide.results$`All data`, method = "spearman")
 cor6 <- cor.test(wide.results$Published, wide.results$`All data`, method = "spearman")
 
-occ.v.occ <- rbind(c("Museum", "PBDB", cor1$estimate, cor1$p.value),
-                   c("Museum", "Published", cor2$estimate, cor2$p.value),
-                   c("Museum", "All", cor3$estimate, cor3$p.value),
+occ.v.occ <- rbind(c("Dark Data", "PBDB", cor1$estimate, cor1$p.value),
+                   c("Dark Data", "Published", cor2$estimate, cor2$p.value),
+                   c("Dark Data", "All", cor3$estimate, cor3$p.value),
                    c("PBDB", "Published", cor4$estimate, cor4$p.value),
                    c("PBDB", "All", cor5$estimate, cor5$p.value), 
                    c("Published", "All", cor6$estimate, cor6$p.value))
 
 # Occupancy vs. Total invert occ
-cor7 <- cor.test(wide.results$Museum, wide.results$all.cells, method = "spearman")
+cor7 <- cor.test(wide.results$`Dark Data`, wide.results$all.cells, method = "spearman")
 cor8 <- cor.test(wide.results$PBDB, wide.results$all.cells, method = "spearman")
 cor9 <- cor.test(wide.results$Published, wide.results$all.cells, method = "spearman")
 cor10 <- cor.test(wide.results$`All data`, wide.results$all.cells, method = "spearman")
 
-occ.v.inv.occ <- rbind(c("Museum", "All PBDB", cor7$estimate, cor7$p.value),
+occ.v.inv.occ <- rbind(c("Dark Data", "All PBDB", cor7$estimate, cor7$p.value),
                    c("PBDB", "All PBDB", cor8$estimate, cor8$p.value),
                    c("Published", "All PBDB", cor9$estimate, cor9$p.value),
                    c("All", "All PBDB", cor10$estimate, cor10$p.value))
 
 # Occupancy vs. Total echinodermata occ
-cor11 <- cor.test(wide.results$Museum, wide.results$echino.cells, method = "spearman")
+cor11 <- cor.test(wide.results$`Dark Data`, wide.results$echino.cells, method = "spearman")
 cor12 <- cor.test(wide.results$PBDB, wide.results$echino.cells, method = "spearman")
 cor13 <- cor.test(wide.results$Published, wide.results$echino.cells, method = "spearman")
 cor14 <- cor.test(wide.results$`All data`, wide.results$echino.cells, method = "spearman")
 
-occ.v.e.occ <- rbind(c("Museum", "Echinodermata PBDB", cor11$estimate, cor11$p.value),
+occ.v.e.occ <- rbind(c("Dark Data", "Echinodermata PBDB", cor11$estimate, cor11$p.value),
                        c("PBDB", "Echinodermata PBDB", cor12$estimate, cor12$p.value),
                        c("Published", "Echinodermata PBDB", cor13$estimate, cor13$p.value),
                        c("All", "Echinodermata PBDB", cor14$estimate, cor14$p.value))
@@ -541,21 +624,38 @@ cor.results %>%
 ##############################
 
 ##### SETUP #####
-# Stage
+# Stage, genera
 lat.results.stage <- lat.range.fun(pbddata = pb.only.dat,
               musdata = m.only.dat, 
               pubdata = pub.all.dat, 
               alldata = all.dat, 
               "stage")
-# Series
+# Series, genera
 lat.results.series <- lat.range.fun(pbddata = pb.only.series,
               musdata = m.only.series, 
               pubdata = pub.all.series, 
               alldata = all.series, 
               "series")
+# Stage, family
+lat.results.stage.fam <- lat.range.fun(pbddata = pb.only.dat,
+                                   musdata = m.only.dat, 
+                                   pubdata = pub.all.dat, 
+                                   alldata = all.dat, 
+                                   "stage", 
+                                   rank = "Family")
+lat.results.stage.fam <- lat.results.stage.fam %>%
+  dplyr::filter(Taxon != "NO_FAMILY_SPECIFIED")
 
 ##### MAXIMUM AND MINIMUM PALAEOLATITUDES #####
-max_min_lat <- pivot_longer(lat.ranges.stage, cols = c("max_lat", "min_lat"))
+
+### Select which results to test ###
+# Stage, Genera
+lat.ranges.stage.Genus$Data[lat.ranges.stage.Genus$Data == "Museum"] <- "Dark Data"
+max_min_lat <- pivot_longer(lat.ranges.stage.Genus, cols = c("max_lat", "min_lat"))
+# Stage, Family
+lat.ranges.stage.Family$Data[lat.ranges.stage.Family$Data == "Museum"] <- "Dark Data"
+max_min_lat <- pivot_longer(lat.ranges.stage.Family, cols = c("max_lat", "min_lat"))
+
 names(max_min_lat)[names(max_min_lat) == "name"] <- "Palaeolatitude"
 max_min_lat$Palaeolatitude[which(max_min_lat$Palaeolatitude == "max_lat")] <- "Maximum"
 max_min_lat$Palaeolatitude[which(max_min_lat$Palaeolatitude == "min_lat")] <- "Minimum"
@@ -577,7 +677,8 @@ max_min_lat$Palaeolatitude[which(max_min_lat$Palaeolatitude == "min_lat")] <- "M
 ggsave("Dark_data_graphs/7.Lat.max.min.png", plot = p7, 
        device = "png", type = "cairo")
 
-lat.ranges.stage %>%
+
+lat.ranges.stage.Genus %>%
   pivot_longer(-c(taxon_id, range_lat, taxon, bin_assignment, Data), 
                names_to = "lat_group") %>%
   group_by(Data, lat_group) %>%
@@ -587,8 +688,15 @@ lat.ranges.stage %>%
 
 ##### PALAEOLATITUDINAL SKEW #####
 
-a <- lat.results.stage %>%
-  ggplot(aes(x = Data, y = Mean_shift, fill = Data)) +
+lat.results.stage$Rank <- "Genus"
+lat.results.stage.fam$Rank <- "Family"
+combined <- rbind(lat.results.stage, lat.results.stage.fam)
+
+# Save
+write.csv(combined, file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_4.csv")
+
+a <- combined %>%
+  ggplot(aes(x = Rank, y = Mean_shift, fill = Data)) +
   guides(alpha = "none") +
   geom_boxplot(aes(alpha = 0.1), show.legend = NA) +
   scale_fill_viridis(discrete = T) + 
@@ -596,10 +704,9 @@ a <- lat.results.stage %>%
   theme(panel.grid.major = element_line(colour = "white"), 
         panel.grid.minor = element_line(colour = "white")) +
   guides(alpha = "none") +
-  theme(legend.position = "none") +
-  ylab("Shift in range mean") 
+  ylab("Shift in range mean (°)") 
   
-b <- lat.results.stage %>%
+b <- combined %>%
   mutate(text = forcats::fct_reorder(Data, Mean_shift)) %>%
   ggplot(aes(x=Mean_shift, color = Data, fill=Data)) +
   geom_histogram(color="#e9ecef", alpha=0.6, position = 'identity', bins = 15) +
@@ -608,9 +715,9 @@ b <- lat.results.stage %>%
   theme(panel.grid.major = element_line(colour = "white"), 
         panel.grid.minor = element_line(colour = "white")) +
   guides(alpha = "none") +
-  xlab("Shift in range mean") + 
+  xlab("Shift in range mean (°)") + 
   ylab("Total") +
-  facet_wrap(~ Data)
+  facet_wrap(~Rank + Data)
 
 (p8 <- ggarrange(a, b, 
           align='hv',
@@ -623,19 +730,38 @@ b <- lat.results.stage %>%
 ggsave("Dark_data_graphs/8.Lat.shift.png", plot = p8, 
        device = "png", type = "cairo")
 
-lat.results.stage %>%
-  group_by(Data) %>%
+ggsave("Dark_data_graphs/Final_Figs/X.Lat.shift.png", plot = p8, 
+       device = "png", type = "cairo")
+
+combined %>%
+  group_by(Data, Rank) %>%
   dplyr::summarize(Mean.shift.mean = mean(Mean_shift), 
                    Median.shift.mean = median(Mean_shift))
 
 ##### DIFFERENCES BETWEEN DATASETS #####
 # Find results
 space.results(lat.results.series)
-space.results(lat.results.stage)
+space.results.gen <- space.results(lat.results.stage)
+space.results.fam <- space.results(lat.results.stage.fam)
+space.results.gen$Rank <- "Genus"
+space.results.fam$Rank <- "Family"
+comb.space.results <- rbind(space.results.gen, space.results.fam)
+write.csv(comb.space.results, file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_5.csv")
+
 
 # Mean/median addition of latitudinal range from museums, as percentage of total
 lat.results.stage %>%
-  dplyr::filter(Data == "Museum" | Data == "Published") %>%
+  dplyr::filter(Data == "Dark Data" | Data == "Published") %>%
+  dplyr::group_by(bin, Taxon) %>%
+  dplyr::filter(n() >1) %>%
+  dplyr::filter(Data == "Published") %>%
+  mutate(Perc.new = 100 - Perc) %>%
+  pull(Perc.new) %>%
+  mean() # change this to get median
+
+# Mean/median addition of latitudinal range from museums, as percentage of total
+lat.results.stage.fam %>%
+  dplyr::filter(Data == "Dark Data" | Data == "Published") %>%
   dplyr::group_by(bin, Taxon) %>%
   dplyr::filter(n() >1) %>%
   dplyr::filter(Data == "Published") %>%
@@ -645,7 +771,16 @@ lat.results.stage %>%
 
 # Mean/median addition of latitudinal range from museums in degrees
 lat.results.stage %>%
-  dplyr::filter(Data == "Museum" | Data == "Published") %>%
+  dplyr::filter(Data == "Dark Data" | Data == "Published") %>%
+  dplyr::group_by(bin, Taxon) %>%
+  dplyr::filter(n() >1) %>%
+  dplyr::filter(Data == "Published") %>%
+  pull(Difference) %>%
+  mean()
+
+# Mean/median addition of latitudinal range from museums in degrees
+lat.results.stage.fam %>%
+  dplyr::filter(Data == "Dark Data" | Data == "Published") %>%
   dplyr::group_by(bin, Taxon) %>%
   dplyr::filter(n() >1) %>%
   dplyr::filter(Data == "Published") %>%
@@ -653,38 +788,18 @@ lat.results.stage %>%
   mean()
 
 # Plot results
-a <- lat.results.stage %>%
-  ggplot(aes(x = Data, y = Difference, fill = Data)) +
+(p9 <- combined %>%
+  ggplot(aes(x = Rank, y = Difference, fill = Data)) +
   geom_boxplot() +
   theme_bw() +
   theme(panel.grid.major = element_line(colour = "white"), 
         panel.grid.minor = element_line(colour = "white")) +
+    theme(legend.position = "none") +
   guides(alpha = "none") +
   scale_fill_viridis(discrete = TRUE, alpha=0.6) +
   geom_jitter(color="black", size=0.4, alpha=0.9) +
-  ylab("Difference (°)") +
-  theme(
-    legend.position="none",
-    plot.title = element_text(size=11)
-  ) +
-  ggtitle("Difference between full latitudinal range and data range, stage level") +
-  xlab("")
-b <- lat.results.series %>%
-  ggplot(aes(x = Data, y = Difference, fill = Data)) +
-  geom_boxplot() +
-  theme_bw() +
-  theme(panel.grid.major = element_line(colour = "white"), 
-        panel.grid.minor = element_line(colour = "white")) +
-  guides(alpha = "none") +
-  ylab("Difference (°)") +
-  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
-  geom_jitter(color="black", size=0.4, alpha=0.9) +
-  theme(
-    legend.position="none",
-    plot.title = element_text(size=11)
-  ) +
-  ggtitle("Difference between full latitudinal range and data range, series level") +
-  xlab("")
+  ylab("Difference between full latitudinal range and data (°)") +
+  xlab(""))
 
 (p9 <- ggarrange(a, b, 
           align='hv',
@@ -695,11 +810,24 @@ b <- lat.results.series %>%
 ggsave("Dark_data_graphs/9.Lat.diff.png", plot = p9, 
        device = "png", type = "cairo")
 
+ggsave("Dark_data_graphs/Final_Figs/X.Lat.diff.png", plot = p9, 
+       device = "png", type = "cairo")
+
+(p8 <- ggarrange(p9, ggarrange(a, b, ncol = 2, 
+                 labels = c("B", "C"), common.legend = T, 
+                 legend = "bottom"), labels = "A",
+                 nrow = 2
+                 ))
+
+ggsave("Dark_data_graphs/Final_Figs/X.Lat.png", plot = p8, 
+       device = "png", type = "cairo")
+
 # Kruskal wallace test for differences between medians
 spatial.tests(lat.results.stage, "Difference")
 spatial.tests(lat.results.stage, "Mean_shift")
 spatial.tests(lat.results.stage, "Perc")
-spatial.tests(lat.ranges.stage, "range_lat")
+spatial.tests(lat.ranges.stage.Genus, "range_lat")
+spatial.tests(lat.ranges.stage.Family, "range_lat")
 
 #############################
 ##### GEOGRAPHIC RANGES #####
@@ -718,33 +846,39 @@ geo.results.series <- geo.range.fun(pbddata = pb.only.series,
                                    alldata = all.series, 
                                    "series")
 
-# Generate results
 geo.results.stage.fam <- geo.range.fun(pbddata = pb.only.dat,
                                    musdata = m.only.dat,
                                    pubdata = pub.all.dat,
                                    alldata = all.dat,
                                    "stage", rank = "Family")
-
-space.results(geo.results.stage.fam)
-geo.results.stage.fam %>%
-  dplyr::group_by(Data) %>%
-  dplyr::summarize(Mean = mean(Percentage.added),
-                   Median = median(Percentage.added))
+geo.results.stage.fam <- geo.results.stage.fam %>%
+  dplyr::filter(Taxon != "NO_FAMILY_SPECIFIED")
 
 # Find differences
 space.results(geo.results.stage)
 space.results(geo.results.series)
+space.results(geo.results.stage.fam)
 
-# Plot differences
-a <- geo.results.stage %>%
-  ggplot(aes(x = Data, y = Perc, fill = Data)) +
-  geom_boxplot() +
+geo.results.stage$Rank <- "Genus"
+geo.results.stage.fam$Rank <- "Family"
+
+geo.results.combined <- rbind(geo.results.stage, geo.results.stage.fam)
+
+# Save
+write.csv(geo.results.combined, file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_2.csv")
+
+# Plot differences at generic level
+a <- geo.results.combined %>%
+  ggplot(aes(x = Rank, y = Perc, fill = Data)) +
+  geom_boxplot(alpha = 0.4) +
+  geom_jitter(shape=16, position=position_jitterdodge(jitter.width = 0.2), aes(color = Data), alpha = 0.8) +
   theme_bw() +
   theme(panel.grid.major = element_line(colour = "white"), 
         panel.grid.minor = element_line(colour = "white")) +
   guides(alpha = "none") +
   scale_fill_viridis(discrete = TRUE, alpha=0.6) +
-  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  scale_colour_viridis_d() +
+  #geom_jitter(aes(color=Data), size=0.4, alpha=0.9) +
   theme(
     legend.position="none",
     plot.title = element_text(size=11)
@@ -752,48 +886,61 @@ a <- geo.results.stage %>%
   ylab("Percentage of range overlap") +
   xlab("")
 
-geo.results.stage$Percentage.added <- as.numeric(geo.results.stage$Percentage.added)
+geo.results.combined$Percentage.added <- as.numeric(geo.results.combined$Percentage.added)
 
-# Plot differences
-b <- geo.results.stage %>%
-    ggplot(aes(x = Data, y = Percentage.added, fill = Data)) +
-    geom_boxplot() +
+b <- geo.results.combined %>%
+    ggplot(aes(x = Rank, y = Percentage.added, fill = Data)) +
+    geom_boxplot(alpha = 0.4) +
     theme_bw() +
     theme(panel.grid.major = element_line(colour = "white"), 
           panel.grid.minor = element_line(colour = "white")) +
     guides(alpha = "none") +
     scale_fill_viridis(discrete = TRUE, alpha=0.6) +
-    geom_jitter(color="black", size=0.4, alpha=0.9) +
+  scale_colour_viridis_d() +
+  geom_jitter(shape=16, position=position_jitterdodge(jitter.width = 0.2), aes(color = Data), alpha = 0.8) +
     theme(
-      legend.position="none",
       plot.title = element_text(size=11)
     ) +
-    ylab(expression('Mean area added to geographic range 
-                    (% of total area from convex hull)')) +
+    ylab(expression('Area added to geographic range (% of total area from convex hull)')) +
     xlab("")
 
 (p10 <- ggarrange(a, b, 
                   align='hv',
                   labels = c("A", "B"),
+                  legend = "bottom",
+                  common.legend = T,
                   nrow = 1))
 
-ggsave("Dark_data_graphs/10.Range.overlap.added.area.png", plot = p10, 
+ggsave("Dark_data_graphs/10.Range.overlap.added.area.genera.png", plot = p10, 
+       device = "png")
+
+ggsave("Dark_data_graphs/Final_Figs/x.Geographic.range.png", plot = p10, 
        device = "png")
 
 # Mean added area (percentage of total area)
-geo.results.stage %>%
+a <- geo.results.stage %>%
   dplyr::group_by(Data) %>%
-  dplyr::summarize(Mean = mean(Percentage.added),
-            Median = median(Percentage.added))
+  dplyr::summarize(`Mean added area` = mean(Percentage.added),
+            `Median added area` = median(Percentage.added)) %>%
+  dplyr::mutate(Rank = "Genus")
 
 geo.results.series %>%
   dplyr::group_by(Data) %>%
   dplyr::summarize(Mean = mean(Percentage.added),
                    Median = median(Percentage.added))
 
+b <- geo.results.stage.fam %>%
+  dplyr::group_by(Data) %>%
+  dplyr::summarize(`Mean added area` = mean(Percentage.added),
+                   `Median added area` = median(Percentage.added)) %>%
+  dplyr::mutate(Rank = "Family")
+
+SI_Table_3 <- rbind(a, b)
+write.csv(SI_Table_3, file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_3.csv")
+
 # Plot of added area per data type
 geo.results.stage$Percentage.added <- as.numeric(geo.results.stage$Percentage.added)
-(p10.5 <- geo.results.stage %>%
+(p10.51 <- geo.results.stage %>%
   ggplot(aes(Percentage.added, fill = Data)) + 
   geom_histogram() +
   theme_bw() +
@@ -804,7 +951,7 @@ geo.results.stage$Percentage.added <- as.numeric(geo.results.stage$Percentage.ad
   ylab("Frequency") +
   scale_fill_viridis(discrete = TRUE, alpha=0.6))
 
-ggsave("Dark_data_graphs/10.5.Added.area.png", plot = p10.5, 
+ggsave("Dark_data_graphs/10.5.Added.area.png", plot = p10.51, 
        device = "png")
 
 ##### STATISTICAL TESTS #####
@@ -815,13 +962,21 @@ spatial.tests(geo.results.stage, "Added.area")
 
 all.geo <- geo.ranges.stage %>%
   dplyr::select(-c(p_lng, p_lat)) %>%
-  distinct() 
-
+  distinct()
 spatial.tests(all.geo, "area")
+
+spatial.tests(geo.results.stage.fam, "Area")
+spatial.tests(geo.results.stage.fam, "Difference")
+spatial.tests(geo.results.stage.fam, "Perc")
+spatial.tests(geo.results.stage.fam, "Added.area")
 
 ################################################################################
 # 5. TEMPORAL RANGE COMPARISON
 ################################################################################
+
+################################
+##### TOTAL TEMPORAL RANGE #####
+################################
 
 # Run on each dataset
 temp_compare(m.only.dat, bin_filter = 3)
@@ -833,6 +988,17 @@ comp <- rbind(comp.m.only.dat, comp.pb.only.dat, comp.pub.all.dat)
 (comp.stats <- rbind(comp.stats.m.only.dat, 
                      comp.stats.pb.only.dat, 
                      comp.stats.pub.all.dat))
+comp.stats$dataframe[comp.stats$dataframe == "m.only.dat"] <- "Dark Data"
+comp.stats$dataframe[comp.stats$dataframe == "pb.only.dat"] <- "PBDB"
+comp.stats$dataframe[comp.stats$dataframe == "pub.all.dat"] <- "Published"
+names(comp.stats)[names(comp.stats) == "dataframe"] <- "Data"
+names(comp.stats)[names(comp.stats) == "Mean_range_diff"] <- "Mean Range Difference"
+names(comp.stats)[names(comp.stats) == "Mean_top_diff"] <- "Mean Top Difference"
+names(comp.stats)[names(comp.stats) == "Mean_bot_diff"] <- "Mean Bottom Difference"
+names(comp.stats)[names(comp.stats) == "Range_perc"] <- "Percentage of total range"
+names(comp.stats)[names(comp.stats) == "Correct_perc"] <- "Percentage of taxa with correct range"
+
+write.csv(comp.stats, file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_7.csv")
 
 comp %>%
   dplyr::filter(Group == "Family") %>%
@@ -844,13 +1010,14 @@ comp %>%
   pull(Perc.new) %>%
   mean() # change this to get median
 
-
 # Tidying
-comp$dataframe[comp$dataframe == "m.only.dat"] <- "Museum"
+comp$dataframe[comp$dataframe == "m.only.dat"] <- "Dark Data"
 comp$dataframe[comp$dataframe == "pb.only.dat"] <- "PBDB"
 comp$dataframe[comp$dataframe == "pub.all.dat"] <- "Published"
 names(comp)[names(comp) == "dataframe"] <- "Data"
 names(comp)[names(comp) == "range_diff"] <- "Difference"
+
+write.csv(comp, file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_6.csv")
 
 # Plots
 (p11 <- comp %>%
@@ -865,14 +1032,14 @@ names(comp)[names(comp) == "range_diff"] <- "Difference"
   ylab("Difference in temporal range (Ma)"))
 
 (p11.5 <- comp %>%
-    ggplot(aes(x=Data, y=Range_perc, fill = Group)) +
+    ggplot(aes(x=Group, y=Range_perc, fill = Data)) +
     geom_boxplot() +
     theme_bw() +
     theme(panel.grid.major = element_line(colour = "white"), 
-          panel.grid.minor = element_line(colour = "white")) +
+          panel.grid.minor = element_line(colour = "white"), 
+          axis.title.x=element_blank()) +
     guides(alpha = "none") +
     scale_fill_viridis(discrete = T, alpha = 0.8) +
-    xlab("Dataset") + 
     ylab("Percentage of temporal range overlap"))
 
 ggsave("Dark_data_graphs/11.Temporal.diff.png", plot = p11, 
@@ -891,6 +1058,62 @@ comp %>%
 comp %>%
   dplyr::filter(Group == "Family") %>%
   spatial.tests(., "Difference")
+
+#######################################
+##### TEMPORAL RANGE DISTRIBUTION #####
+#######################################
+
+# Get position within temporal range of each Genera
+m.pos.gen <- perc.range(occdf = m.only.dat, label = "Museum", rank = "Genus")
+pub.pos.gen <- perc.range(occdf = pub.all.dat, label = "Published", rank = "Genus")
+pb.pos.gen <- perc.range(occdf = pb.only.dat, label = "PBDB", rank = "Genus")
+
+# Get position within temporal range of each Genera
+m.pos.sp <- perc.range(occdf = m.only.dat, label = "Museum", rank = "Species")
+pub.pos.sp <- perc.range(occdf = pub.all.dat, label = "Published", rank = "Species")
+pb.pos.sp <- perc.range(occdf = pb.only.dat, label = "PBDB", rank = "Species")
+
+# Get position within temporal range of each Genera
+m.pos.fam <- perc.range(occdf = m.only.dat, label = "Museum", rank = "Family")
+pub.pos.fam <- perc.range(occdf = pub.all.dat, label = "Published", rank = "Family")
+pb.pos.fam <- perc.range(occdf = pb.only.dat, label = "PBDB", rank = "Family")
+
+# Combine dataset
+pos <- rbind(m.pos.gen, pub.pos.gen, pb.pos.gen, m.pos.fam, pub.pos.fam, pb.pos.fam, 
+             m.pos.sp, pub.pos.sp, pb.pos.sp)
+
+pos$Rank <- as.factor(pos$Rank)
+pos$Data[pos$Data == "Museum"] <- "Dark Data"
+
+pos <- pos %>%
+  dplyr::filter(!(Rank == "Species" & Data == "PBDB"))
+
+# Plot
+(p11.7 <- ggplot(pos, aes(x = Rank, y = Position, group = interaction(Rank, Data))) +
+  geom_violin(width = 1, position = position_dodge(1), aes(fill = Data), scale = "area") +
+  scale_fill_viridis(discrete = T, alpha = 0.8) + 
+  scale_colour_viridis_d() +
+  ylab("Position of occurrence within range (%)") +
+  geom_jitter(shape=16, position=position_jitterdodge(dodge.width = 1, 
+                                                      jitter.width = 0.25), aes(color = Data), alpha = 0.5) +
+  geom_boxplot(width = 0.3, position = position_dodge(1), alpha = 0.8) +
+  theme_bw() +
+  theme(panel.grid.major = element_line(colour = "white"), 
+        panel.grid.minor = element_line(colour = "white")))
+
+# Save
+ggsave("Dark_data_graphs/11.7.Temporal.range.position.png", plot = p11.7, 
+       device = "png", type = "cairo")
+
+(p11 <- ggarrange(p11.5, p11.7, 
+          align = 'hv',
+          labels = c("A", "B"),
+          legend = "bottom",
+          nrow = 2, 
+          common.legend = T))
+
+ggsave("Dark_data_graphs/Final_Figs/X.Temporal.range.png", plot = p11, 
+       device = "png", type = "cairo")
 
 ################################################################################
 # 6. DIVERSITY ANALYSIS
@@ -919,7 +1142,7 @@ div.tot.long <- tidyr::pivot_longer(comb.div, cols = c("Museum_SIB",
                                                       "All_SIB"))
 
 names(div.tot.long)[names(div.tot.long) == "name"] <- "Data"
-div.tot.long$Data[div.tot.long$Data == "Museum_SIB"] <- "Museum"
+div.tot.long$Data[div.tot.long$Data == "Museum_SIB"] <- "Dark Data"
 div.tot.long$Data[div.tot.long$Data == "PBDB_SIB"] <- "PBDB"
 div.tot.long$Data[div.tot.long$Data == "Pub_SIB"] <- "Published"
 div.tot.long$Data[div.tot.long$Data == "All_SIB"] <- "All"
@@ -1020,11 +1243,14 @@ cor.results$p <- signif(as.numeric(cor.results$p), digits = 5)
 # Correct for multiple tests
 cor.results$BH <- p.adjust(cor.results$p, method = "BH")
 cor.results$Signif <- ifelse(cor.results$BH < 0.05, "*", "")
+cor.results$`Variable 1`[cor.results$`Variable 1` == "Museum"] <- "Dark Data"
 
 cor.results %>%
   kbl() %>%
   kable_classic(full_width = F, html_font = "Cambria") %>%
-  save_kable(file = "Dark_data_graphs/T2.raw.div.corrs.html")
+  save_kable(file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_8.html")
+
+write.csv(cor.results, file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_8.csv")
 
 #################################
 ##### SQS DIVERSITY - INEXT #####
@@ -1057,7 +1283,7 @@ estD_plotting <- bind_rows(lapply(seq_along(test.list), function(x){
 
 ## Ensure that the quorum level column is being treated as a 'factor' to avoid errors while plotting:
 estD_plotting$quorum_level <- as.factor(estD_plotting$quorum_level)
-
+estD_plotting$Data[estD_plotting$Data == "Museum"] <- "Dark Data"
 ## Create a colour gradient for as many colours as you have quorum levels:
 teal_gradient <- scales::seq_gradient_pal("turquoise", "darkslategrey", "Lab")(seq(0, 1, length.out = 4))
 
@@ -1096,9 +1322,12 @@ teal_gradient <- scales::seq_gradient_pal("turquoise", "darkslategrey", "Lab")(s
             size = 4,
             pos = list("b"),
             abbrv = T) +
-  facet_wrap(~Data, nrow = 4))
+  facet_wrap(~Data, nrow = 4) +
+  guides(shape = "none"))
 
 ggsave("Dark_data_graphs/14.SQS.div.iNEXT.png", plot = p14, 
+       device = "png", type = "cairo")
+ggsave("Dark_data_graphs/Final_Figs/X.SQS.png", plot = p14, 
        device = "png", type = "cairo")
 
 ###############################
@@ -1201,10 +1430,14 @@ combined.SRA <- list(Museum = temp.museum, PBDB = temp.pbdb, Published = temp.pu
 
 combined.SRA <- bind_rows(lapply(combined.SRA, function(f){f <- bind_rows(f)}))
 
+combined.SRA$Data[combined.SRA$Data == "Museum"] <- "Dark Data"
+
 (p16 <- plot.SRA(combined.SRA, series, 
                  fill_var = "Data", 
                  group_var = "Family", 
                  colour = "AsteroidCity1"))
+
+
 (p16.5 <- plot.SRA(combined.SRA, series, 
                    fill_var = "Family", 
                    group_var = "Data", 
@@ -1212,7 +1445,21 @@ combined.SRA <- bind_rows(lapply(combined.SRA, function(f){f <- bind_rows(f)}))
 
 ggsave("Dark_data_graphs/16.SRA.png", plot = p16, 
        device = "png", type = "cairo")
+
+ggsave("Dark_data_graphs/Final_Figs/X.SRA.png", plot = p16, 
+       device = "png", type = "cairo")
+
 ggsave("Dark_data_graphs/16.5.SRA.png", plot = p16.5, 
+       device = "png", type = "cairo")
+
+
+(p.comb <- ggarrange(p14, p16,
+          labels = c("A", "B"), 
+          widths = c(0.7, 1),
+          nrow = 1, 
+          ncol = 2))
+
+ggsave("Dark_data_graphs/Final_Figs/SQS.SRA.png", plot = p.comb, 
        device = "png", type = "cairo")
 
 ################################################################################
@@ -1259,6 +1506,8 @@ Research <- bind_rows(list(research.prep(a.df, data = "All"),
                     research.prep(p.df, data = "Published"),
                     research.prep(m.df, data = "Museum")))
 
+Research$Data[Research$Data == "Museum"] <- "Dark Data"
+
 (p17 <- ggplot(Research, aes(x=reorder(country, freq, sum), y=freq*100, fill=type)) +
   geom_bar(stat="identity") +
   labs(x="", y=" Percentage contribution to fossil collections", fill="Fieldwork") +
@@ -1273,6 +1522,9 @@ Research <- bind_rows(list(research.prep(a.df, data = "All"),
   facet_wrap(~Data, nrow = 3))
 
 ggsave("Dark_data_graphs/17.Contribution.png", plot = p17, 
+       device = "png", type = "cairo")
+
+ggsave("Dark_data_graphs/Final_Figs/2.Contribution.png", plot = p17, 
        device = "png", type = "cairo")
 
 ######################################
@@ -1308,7 +1560,7 @@ dev.off()
 (p20 <- network.stats(p.df))
 (p21 <- network.stats(a.df))
 
-ggsave("Dark_data_graphs/19.Museum.network.stats.png", plot = p19, 
+ggsave("Dark_data_graphs/19.DarkData.network.stats.png", plot = p19, 
        device = "png", type = "cairo")
 ggsave("Dark_data_graphs/20.Published.network.stats.png", plot = p20, 
        device = "png", type = "cairo")
@@ -1337,7 +1589,7 @@ names(sea.lvl)[names(sea.lvl) == "Ma"] <- "min_ma"
 sea.lvl <- sea.lvl %>%
   dplyr::filter(max_ma < 538) %>%
   dplyr::filter(min_ma > 0)
-sea.lvl <- bin_time(sea.lvl, stages, method = "mid")
+sea.lvl <- bin_time(occdf = sea.lvl, bins = stages, method = "mid")
 sea.lvl <- sea.lvl %>%
   dplyr::group_by(bin_midpoint) %>%
   dplyr::summarize(mean_sl = mean(TGE_SL_isocorr_m))
@@ -1400,12 +1652,56 @@ d2 <- run.models(pb.only.dat, stages, div = "raw", na = F)
 
 NA.model.results <- list("Published" = a1, 
                          "All" = b1, 
-                         "Museum" = c1, 
+                         "Dark Data" = c1, 
                          "PBDB" = d1)
 glob.model.results <- list("Published" = a2,
                              "All" = b2, 
-                           "Museum" = c2,
+                           "Dark Data" = c2,
                            "PBDB" = d2)
 # Results Viewed
-model.results(NA.model.results)
-model.results(glob.model.results)
+model.results.1 <- model.results(NA.model.results)
+model.results.2 <-model.results(glob.model.results)
+
+pub.mod <- paste(names(NA.model.results$Published$Top.model$coefficients), collapse = " + ")
+all.mod <- paste(names(NA.model.results$All$Top.model$coefficients), collapse = " + ")
+DD.mod <- paste(names(NA.model.results$`Dark Data`$Top.model$coefficients), collapse = " + ")
+PBDB.mod <- paste(names(NA.model.results$PBDB$Top.model$coefficients), collapse = " + ")
+
+NA.table <- model.results.1[[1]][,c(14,9,10,11,13)]
+NA.table$`Top model` <- c(pub.mod, all.mod, DD.mod, PBDB.mod)
+NA.table$Model <- "North America only"
+NA.table <- NA.table[,c(7, 1, 6, 2, 3, 4)]
+NA.table <- NA.table[order(NA.table$Data), ]
+
+pub.mod <- paste(names(glob.model.results$Published$Top.model$coefficients), collapse = " + ")
+all.mod <- paste(names(glob.model.results$All$Top.model$coefficients), collapse = " + ")
+DD.mod <- paste(names(glob.model.results$`Dark Data`$Top.model$coefficients), collapse = " + ")
+PBDB.mod <- paste(names(glob.model.results$PBDB$Top.model$coefficients), collapse = " + ")
+
+glob.table <- model.results.2[[1]][,c(12,7,8,9)]
+glob.table$`Top model` <- c(pub.mod, all.mod, DD.mod, PBDB.mod)
+glob.table$Model <- "Global"
+glob.table <- glob.table[,c(6, 1, 5, 2, 3, 4)]
+glob.table <- glob.table[order(glob.table$Data), ]
+
+Table1<- rbind(NA.table, glob.table)
+
+Table1 %>%
+  kbl() %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  save_kable(file = "Dark_data_graphs/Final_Figs/Table_1.html")
+
+write.csv(Table1, file = "Dark_data_graphs/Final_Figs/Table_1.csv")
+
+model.results.1[[2]]$Model <- "North America only"
+model.results.2[[2]]$Model <- "Global"
+
+Table2 <- rbind(model.results.1[[2]], model.results.2[[2]])
+Table2 <- Table2[,c(8, 1, 2, 3, 4, 5, 6, 7)]
+
+Table2 %>%
+  kbl() %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  save_kable(file = "Dark_data_graphs/Final_Figs/Table_2.html")
+
+write.csv(Table2, file = "Dark_data_graphs/Final_Figs/Table_2.csv")

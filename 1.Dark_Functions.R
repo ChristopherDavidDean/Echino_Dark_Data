@@ -18,6 +18,7 @@
 
 # 1. SETUP
 # --- simple.grain
+# --- simple.rank
 #
 # 2. BASIC COMPARISONS
 # --- setup.table 
@@ -38,6 +39,7 @@
 #
 # 5. TEMPORAL RANGE COMPARISON
 # --- temp_compare
+# --- perc.range
 #
 # 6. DIVERSITY ANALYSIS
 # --- run.div
@@ -73,15 +75,12 @@
 library(tidyr)
 library(tibble)
 library(raster)
-library(plyr)
 library(latticeExtra)
 library(rasterVis)
 library(sp)
-library(maptools)
 library(stringr)
 library(patchwork)
 library(sf)
-library(rgeos)
 library(maps)
 library(mapview)
 library(mapdata)
@@ -134,6 +133,34 @@ simple.grain <- function(data.set){
   data.set <- data.set
 }
 
+##### simple.rank #####
+
+# Make anything including or above 'class' into a single category
+simple.rank <- function(data.set){
+  for (l in 1:nrow(data.set)){
+    if(is.na(data.set$Rank[l]) == T){
+      data.set$Rank[l] <- ""
+    }
+    if (data.set$Rank[l]=="Class"  | data.set$Rank[l]=="Order" |
+        data.set$Rank[l]=="Infraorder"){
+      data.set$Rank_simp[l]<-"Above Family"
+    }
+    else if (data.set$Rank[l]=="Family"){ 
+      data.set$Rank_simp[l]<-"Family"
+    }
+    else if (data.set$Rank[l]=="Genus"){ 
+      data.set$Rank_simp[l]<-"Genus"
+    }
+    else if (data.set$Rank[l]=="Species"){ 
+      data.set$Rank_simp[l]<-"Species"
+    }
+    else{
+      data.set$Rank_simp[l] <- NA
+    }
+  }
+  data.set <- data.set
+}
+
 ################################################################################
 # 2. BASIC COMPARISONS
 ################################################################################
@@ -160,14 +187,14 @@ setup.table <- function(mdata,
   temp <- temp %>%
     purrr::reduce(full_join, by = "Var1") %>%
     dplyr::rename(temp.name = Var1,
-                  Museum = Freq.x,
+                  `Dark Data` = Freq.x,
                   PBDB = Freq.y,
                   Published = Freq.x.x,
                   All = Freq.y.y)
   temp[is.na(temp)] <- 0
   names(temp)[names(temp) == "temp.name"] <- column
   if(pivot == T){
-    temp <- tidyr::pivot_longer(temp, cols = c("Museum", "PBDB", 
+    temp <- tidyr::pivot_longer(temp, cols = c("Dark Data", "PBDB", 
                                                "Published", "All"))
     temp$value <- as.numeric(temp$value)
   }
@@ -176,14 +203,14 @@ setup.table <- function(mdata,
 
 ##### table.plots #####
 # Plots results from setup.table, as both count and proportion
-table.plots <- function(pivot, x, removeNA = T, colour){
+table.plots <- function(pivot, x, removeNA = T, colour, labs){
   if(removeNA == T){
     pivot <- na.omit(pivot)
   }
   a <- ggplot(data = pivot, aes(x = name, y = value, fill = !!sym(x))) +
     geom_bar(stat = 'identity') +
     scale_fill_manual(values=colour) +
-    guides(fill=guide_legend(title="Rank")) +
+    guides(fill=guide_legend(title=x)) +
     ylab("Total occurrences") +
     xlab("Dataset") +
     theme_bw() +
@@ -193,7 +220,7 @@ table.plots <- function(pivot, x, removeNA = T, colour){
   b <- ggplot(data = pivot, aes(x = name, y = value, fill = !!sym(x))) +
     geom_bar(stat = 'identity', position = 'fill') +
     scale_fill_manual(values=colour) +
-    guides(fill=guide_legend(title="Rank")) +
+    guides(fill=guide_legend(title=x)) +
     ylab("Proportion of dataset") +
     xlab("Dataset") +
     theme_bw() +
@@ -203,7 +230,7 @@ table.plots <- function(pivot, x, removeNA = T, colour){
   
   ggarrange(a, b, 
             align='hv',
-            labels = c("A", "B"),
+            labels = labs,
             nrow = 1, 
             ncol = 2,
             common.legend = T, 
@@ -255,25 +282,25 @@ get_grid <- function(data, res, e, r = "N"){ # data is first output from combine
 
 ##### get_grid_im #####
 # Set up background info
-countries <- maps::map("world", plot=FALSE, fill = TRUE) # find map to use as backdrop
-states <- maps::map("state", plot = FALSE, fill = TRUE)
-countries <<- maptools::map2SpatialPolygons(countries, IDs = countries$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
-states <<- maptools::map2SpatialPolygons(states, IDs = states$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
-
-# Function for making maps
-get_grid_im <- function(data, res, name, ext){ # Data is first output from combine_data (fossil.colls). Res is chosen resolution in degrees. name is user inputted string related to data inputted, for display on graphs. 
-  xy <- cbind(as.double(data$lng), as.double(data$lat))
-  #xy <- unique(xy)
-  r <- raster::raster(ext = ext, res = res)
-  r <- raster::rasterize(xy, r, fun = 'count')
-  #r[r > 0] <- 1 # Remove if you want values instead of pure presence/absence.
-  countries <- maps::map("world", plot=FALSE, fill = TRUE) # find map to use as backdrop
-  countries <<- maptools::map2SpatialPolygons(countries, IDs = countries$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
-  mapTheme <- rasterVis::rasterTheme(region=viridis(8))
-  (r <- rasterVis::levelplot(r, margin=F, par.settings=mapTheme,  main = paste("Total ", (substitute(name)), " per Grid Cell", sep = "")) + #create levelplot for raster
-          #   latticeExtra::layer(sp.polygons(states, col = "white", fill = NA), under = T)  + # Plots state lines
-          latticeExtra::layer(sp.polygons(countries, col = 0, fill = "light grey"), under = T)) # Plots background colour
-}
+#countries <- maps::map("world", plot=FALSE, fill = TRUE) # find map to use as backdrop
+#states <- maps::map("state", plot = FALSE, fill = TRUE)
+#countries <<- maptools::map2SpatialPolygons(countries, IDs = countries$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
+#states <<- maptools::map2SpatialPolygons(states, IDs = states$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
+#
+## Function for making maps
+#get_grid_im <- function(data, res, name, ext){ # Data is first output from combine_data (fossil.colls). Res is chosen resolution in degrees. name is user inputted string related to data inputted, for display on graphs. 
+#  xy <- cbind(as.double(data$lng), as.double(data$lat))
+#  #xy <- unique(xy)
+#  r <- raster::raster(ext = ext, res = res)
+#  r <- raster::rasterize(xy, r, fun = 'count')
+#  #r[r > 0] <- 1 # Remove if you want values instead of pure presence/absence.
+#  countries <- maps::map("world", plot=FALSE, fill = TRUE) # find map to use as backdrop
+#  countries <<- maptools::map2SpatialPolygons(countries, IDs = countries$names, proj4string = CRS("+proj=longlat")) # Turn map into spatialpolygons
+#  mapTheme <- rasterVis::rasterTheme(region=viridis(8))
+#  (r <- rasterVis::levelplot(r, margin=F, par.settings=mapTheme,  main = paste("Total ", (substitute(name)), " per Grid Cell", sep = "")) + #create levelplot for raster
+#          #   latticeExtra::layer(sp.polygons(states, col = "white", fill = NA), under = T)  + # Plots state lines
+#          latticeExtra::layer(sp.polygons(countries, col = 0, fill = "light grey"), under = T)) # Plots background colour
+#}
 
 ################################################################################
 # 4. SPATIAL RANGES THROUGH TIME
@@ -331,7 +358,7 @@ lat.range.fun <- function(pbddata,
                       make.range(alldata, "All", "lat", rank))
   # lat.ranges$bin_assignment <- as.numeric(lat.ranges$bin_assignment)
   
-  assign(paste("lat.ranges.", name, sep = ""), lat.ranges, envir = .GlobalEnv)
+  assign(paste("lat.ranges.", name, ".", rank, sep = ""), lat.ranges, envir = .GlobalEnv)
   
   lat.results <- data.frame()
   for(i in sort(unique(lat.ranges$bin_assignment))){
@@ -359,6 +386,7 @@ lat.range.fun <- function(pbddata,
     # Save results
     lat.results <- rbind(lat.results, temp.data)
   }
+  lat.results$Data[lat.results$Data == "Museum"] <- "Dark Data"
   return(lat.results)
 }
 
@@ -523,6 +551,7 @@ geo.range.fun <- function(pbddata,
     geo.results <- rbind(geo.results, temp.data)
     print(i)
   }
+  geo.results$Data[geo.results$Data == "Museum"] <- "Dark Data"
   return(geo.results)
 }
 
@@ -595,6 +624,59 @@ temp_compare <- function(occdf, bin_filter){
   comp_stats$dataframe <- deparse(substitute(occdf))
   assign(paste("comp.stats.", deparse(substitute(occdf)), sep = ""), comp_stats, 
          envir = .GlobalEnv)
+}
+
+##### perc.range #####
+# Function to find the position of occurrence within the temporal range of the genera
+perc.range <- function(occdf, label, rank = "Genus"){
+  # Setup occurrence dataframe
+  if(rank == "Species"){
+    occdf <- occdf %>%
+      dplyr::filter(Rank == "Species")
+    # Setup reference dataframe (all occurrences)
+    all.occdf <- all.dat %>%
+      dplyr::filter(Rank == "Species")
+  }else if(rank == "Genus"){
+    occdf <- occdf %>%
+      dplyr::filter(Rank == "Genus" | Rank == "Species")
+    # Setup reference dataframe (all occurrences)
+    all.occdf <- all.dat %>%
+      dplyr::filter(Rank == "Genus" | Rank == "Species")
+  }else if (rank == "Family"){
+    occdf <- occdf %>%
+      dplyr::filter(Rank == "Genus" | Rank == "Species" | Rank == "Family") %>%
+      dplyr::filter(Family != "NO_FAMILY_SPECIFIED")
+    # Setup reference dataframe (all occurrences)
+    all.occdf <- all.dat %>%
+      dplyr::filter(Rank == "Genus" | Rank == "Species" | Rank == "Family") %>%
+      dplyr::filter(is.na(Family) != T) %>%
+      dplyr::filter(Family != "NO_FAMILY_SPECIFIED")
+  }
+  # Get temporal range of genera using all data as a reference
+  a <- tax_range_time(all.occdf, name = rank, by = "name", plot = F)
+  # For each row of the supplied dataframe
+  occdf$Position <- unlist(lapply(seq(1,nrow(occdf),1), function(x){
+    # Find the minimum age of the range for the Genera
+    min <- a$min_ma[[which(a$taxon == occdf[[rank]][x])]]
+    # Find the maximum age of the range for the Genera
+    max <- a$max_ma[[which(a$taxon == occdf[[rank]][x])]]
+    # Get the midpoint age of the occurrence
+    input <- ((occdf$max_ma[x] + occdf$min_ma[x])/2)
+    # Calculate the position of the occurrence within the age range
+    return(((input - min) * 100)/(max-min))
+  }))
+  # Find singleton taxa (no range)
+  singletons <- a %>%
+    filter(n_occ == 1)
+  # Remove singleton taxa
+  occdf <- occdf[!occdf[[rank]] %in% singletons$taxon,]
+  # Label data
+  occdf$Data <- label
+  occdf$Rank <- rank
+  # Remove redundant data
+  occdf <- occdf %>%
+    dplyr::select(Data, Position, Rank)
+  return(occdf)
 }
 
 ################################################################################
@@ -917,70 +999,32 @@ plot.SRA <- function(fam_list, bin.choice, fill_var,
               size = 4,
               pos = list("b"),
               abbrv = T) +
-    facet_wrap(group_var)
+    facet_wrap(group_var, nrow =3)
+
   if((length(unique(combined.SRA[[group_var]])) %% 2) != 0){
     a <- shift_legend(a)
-    a <- as_ggplot(a)
+    a <- ggpubr::as_ggplot(a)
   }
   return(a)
 }
 
 ##### shift_legend #####
-shift_legend <- function(p){
-  
-  # check if p is a valid object
-  if(!"gtable" %in% class(p)){
-    if("ggplot" %in% class(p)){
-      gp <- ggplotGrob(p) # convert to grob
-    } else {
-      message("This is neither a ggplot object nor a grob generated from ggplotGrob. Returning original plot.")
-      return(p)
-    }
-  } else {
-    gp <- p
-  }
-  
-  # check for unfilled facet panels
+shift_legend <- function(p) {
+  # ...
+  # to grob
+  gp <- ggplotGrob(p)
   facet.panels <- grep("^panel", gp[["layout"]][["name"]])
   empty.facet.panels <- sapply(facet.panels, function(i) "zeroGrob" %in% class(gp[["grobs"]][[i]]))
   empty.facet.panels <- facet.panels[empty.facet.panels]
-  if(length(empty.facet.panels) == 0){
-    message("There are no unfilled facet panels to shift legend into. Returning original plot.")
-    return(p)
-  }
   
-  # establish extent of unfilled facet panels (including any axis cells in between)
+  # establish name of empty panels
   empty.facet.panels <- gp[["layout"]][empty.facet.panels, ]
-  empty.facet.panels <- list(min(empty.facet.panels[["t"]]), min(empty.facet.panels[["l"]]),
-                             max(empty.facet.panels[["b"]]), max(empty.facet.panels[["r"]]))
-  names(empty.facet.panels) <- c("t", "l", "b", "r")
+  names <- empty.facet.panels$name
+  # example of names:
+  #[1] "panel-3-2" "panel-3-3"
   
-  # extract legend & copy over to location of unfilled facet panels
-  guide.grob <- which(gp[["layout"]][["name"]] == "guide-box")
-  if(length(guide.grob) == 0){
-    message("There is no legend present. Returning original plot.")
-    return(p)
-  }
-  gp <- gtable_add_grob(x = gp,
-                        grobs = gp[["grobs"]][[guide.grob]],
-                        t = empty.facet.panels[["t"]],
-                        l = empty.facet.panels[["l"]],
-                        b = empty.facet.panels[["b"]],
-                        r = empty.facet.panels[["r"]],
-                        name = "new-guide-box")
-  
-  # squash the original guide box's row / column (whichever applicable)
-  # & empty its cell
-  guide.grob <- gp[["layout"]][guide.grob, ]
-  if(guide.grob[["l"]] == guide.grob[["r"]]){
-    gp <- gtable_squash_cols(gp, cols = guide.grob[["l"]])
-  }
-  if(guide.grob[["t"]] == guide.grob[["b"]]){
-    gp <- gtable_squash_rows(gp, rows = guide.grob[["t"]])
-  }
-  gp <- gtable_remove_grobs(gp, "guide-box")
-  
-  return(gp)
+  # now we just need a simple call to reposition the legend
+  reposition_legend(p, 'center', panel=names)
 }
 
 ################################################################################
@@ -1392,7 +1436,7 @@ ca.binning <- function(data){
   test <- data %>%
     dplyr::filter(max_ma < max(stages$max_ma)) %>%
     dplyr::filter(min_ma > min(stages$min_ma))
-  test <- bin_time(test, stages, method = 'mid')
+  test <- bin_time(occdf =  test, bins = stages, method = 'mid')
   test <- test %>%
     dplyr::group_by(bin_midpoint) %>%
     dplyr::summarize(mean = mean(MgCa))

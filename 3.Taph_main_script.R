@@ -18,7 +18,7 @@
 source("1.Taph_Functions.R")
 
 # Load setup file
-source("2.Setup.R")
+source("2.Taph_Setup.R")
 
 ################################################################################
 # 2. BAR PLOTS AND CHI-SQUARED TESTS
@@ -87,7 +87,7 @@ vcd::mosaic(~ Preservation_score + Finalised_lith,
 ######################
 
 # Make bar plot
-make.bar.plot(g.m.dat, g.m.dat$Finalised_grainsize, "Grain Size", 
+make.bar.plot(g.m.dat, g.m.dat$Finalised_grainsize_simp, "Grain Size", 
               colour = "Darjeeling2", flip = FALSE)
 
 # Make proportional bar plot
@@ -140,6 +140,7 @@ ggplot(f.m.dat) +
   geom_bar(position = 'fill') +
   ylab("Proportion of total") +
   xlab("Family") +
+  coord_flip() +
   labs(fill="Preservation score") +
   scale_fill_manual(values=(wes_palette("Zissou1"))) +
   theme_bw() +
@@ -659,7 +660,8 @@ all.pbdb.period <- all.pbdb %>%
   filter(min_ma > 251.902)
 
 # Bin
-all.pbdb.period <- bin_time(all.pbdb.period, series, method = 'majority')
+all.pbdb.period <- bin_time(occdf = all.pbdb.period, bins = series, 
+                            method = 'majority')
 
 pbdb.stat <- binstat(all.pbdb, 
                      tax= "accepted_name", 
@@ -681,8 +683,8 @@ pb.echino <- pb.echino %>%
   dplyr::filter(max_ma < 485.4000) %>%
   dplyr::filter(min_ma > 251.2000)
 
-pb.echino.period <- bin_time(pb.echino, series, method = 'majority')
-pb.echino <- bin_time(pb.echino, bins = stages, method = 'majority')
+pb.echino.period <- bin_time(occdf = pb.echino, bins = series, method = 'majority')
+pb.echino <- bin_time(occdf = pb.echino, bins = stages, method = 'majority')
 
 pb.echino <- binstat(pb.echino, 
         tax= "accepted_name", 
@@ -1010,6 +1012,71 @@ period.coll.echino <- rbind(c("Period", 1, "Echinodermata collections",
   ylab("Count") +
   xlab("Time (Ma)"))
 
+
+abund.counts <- as.data.frame(t(table(m.dat$Preservation_score, m.dat$bin_midpoint)))
+colnames(abund.counts) <- c("bin_midpoint", "Score", "Freq")
+test1 <- merge(sili.macro.count, abund.counts, by = "bin_midpoint")
+test2 <- merge(carb.macro.count, abund.counts, by = "bin_midpoint")
+test <- rbind(test1, test2)
+
+test$count <- log10(test$count + 0.0001)
+test$Freq <- log10(test$Freq + 0.0001)
+
+test2$count <- log10(test2$count + 0.0001)
+test2$Freq <- log10(test2$Freq + 0.0001)
+
+stages2 <- stages %>%
+  filter(max_ma > 254.13) %>%
+  filter(min_ma <485.4000)
+
+test3 <- bin_time(occdf = stages2, bins = series, method = "mid")
+
+test <- merge(test, test3, by = "bin_midpoint")
+
+test3$bin_midpoint <- (test3$max_ma + test3$min_ma)/2
+test1 <- merge(test1, test3, by = "bin_midpoint")
+test2 <- merge(test2, test3, by = "bin_midpoint")
+test4 <- rbind(test1, test2)
+
+ggplot(test2, aes(x = count, y = Freq, colour = bin_assignment)) +
+  
+  geom_point() +
+ # geom_smooth(method = lm) +
+  facet_wrap(~ Score ) +
+  theme_bw() 
+
+
+ggplot(test, aes(x = count, y = Freq, colour = bin_assignment)) +
+  geom_point() +
+  scale_colour_manual("Legend", values = myColours) +
+  #geom_smooth(method = lm) +
+  facet_wrap(~ lith + Score, nrow = 2) +
+  theme_bw() 
+
+
+m.dat.series
+
+a <- m.dat.series %>%
+  dplyr::group_by(bin_midpoint, Finalised_lith, Rank, Preservation_score) %>%
+  dplyr::summarize(test = n()) %>%
+  dplyr::filter(is.na(Finalised_lith) != T)
+
+a$Preservation_score <- as.factor(a$Preservation_score)
+
+ggplot(a, aes(x=bin_midpoint, y=test)) + 
+    geom_line(aes(colour = Rank)) +
+    scale_x_reverse() +
+    theme_bw() +
+    coord_geo(dat = series2, 
+              xlim = c(485.4, 251.902),
+              rot = list(0),
+              size = 4,
+              pos = list("b"),
+              abbrv = T) +
+    ylab("Count") +
+    xlab("Time (Ma)") +
+  facet_wrap(~Finalised_lith + Preservation_score, nrow = 2)
+
 #################################
 ##### SED TYPE CORRELATIONS #####
 #################################
@@ -1205,6 +1272,190 @@ stage.macro.sili.area  <-  rbind(c("Stage", 1, "Macrostrat siliciclastic (area)"
                                  c("Stage", 5, "Macrostrat siliciclastic (area)",
                                    stage.sili.macro.area.5$estimate,
                                    stage.sili.macro.area.5$p.value))
+
+##### STAGE CORRELATIONS, MISSING STAGES REMOVED #####
+
+# Remove stages based on overall occurrences
+
+occs <- as.data.frame(table(m.dat$bin_assignment))
+colnames(occs) <- c("bin", "Freq")
+occs$bin <- as.numeric(as.character(occs$bin))
+ref <- full_join(stages, occs, by = "bin")
+ref <- ref %>%
+  filter(max_ma < 485.41) %>%
+  filter(min_ma > 251.901)
+ref[is.na(ref) == T] <- 0
+ref <- ref[ref$Freq == 0,]
+
+# Set up carb.macro and sili.macro
+stages$bin_midpoint <- (stages$max_ma + stages$min_ma)/2
+carb.macro.count.removed <- full_join(stages, carb.macro.count, by = "bin_midpoint")
+sili.macro.count.removed <- full_join(stages, sili.macro.count, by = "bin_midpoint")
+carb.macro.area.removed <- full_join(stages, carb.macro.area, by = "bin_midpoint")
+sili.macro.area.removed <- full_join(stages, sili.macro.area, by = "bin_midpoint")
+
+# Remove rows
+stage.pres.all.1.removed <- stage.pres.all.1[!stage.pres.all.1$name %in% ref$name, ]
+stage.pres.all.2.removed <- stage.pres.all.2[!stage.pres.all.2$name %in% ref$name, ]
+stage.pres.all.3.removed <- stage.pres.all.3[!stage.pres.all.3$name %in% ref$name, ]
+stage.pres.all.4.removed <- stage.pres.all.4[!stage.pres.all.4$name %in% ref$name, ]
+stage.pres.all.5.removed <- stage.pres.all.5[!stage.pres.all.5$name %in% ref$name, ]
+carb.macro.count.removed <- carb.macro.count.removed[!carb.macro.count.removed$name %in% ref$name, ]
+sili.macro.count.removed <- sili.macro.count.removed[!sili.macro.count.removed$name %in% ref$name, ]
+carb.macro.area.removed <- carb.macro.area.removed[!carb.macro.area.removed$name %in% ref$name, ]
+sili.macro.area.removed <- sili.macro.area.removed[!sili.macro.area.removed$name %in% ref$name, ]
+sili.macro.area.removed <- sili.macro.area.removed[!is.na(sili.macro.area.removed$count), ]
+sili.macro.count.removed <- sili.macro.count.removed[!is.na(sili.macro.count.removed$count), ]
+carb.macro.area.removed <- carb.macro.area.removed[!is.na(carb.macro.area.removed$count), ]
+carb.macro.count.removed <- carb.macro.count.removed[!is.na(carb.macro.count.removed$count), ]
+
+# Taphonomic grade vs. carbonate (count), stage level
+stage.carb.macro.count.removed.1 <- cor.test(log10(carb.macro.count.removed$count), 
+                                     log10(stage.pres.all.1.removed$Freq), method = 'spearman')
+stage.carb.macro.count.removed.2 <- cor.test(log10(carb.macro.count.removed$count), 
+                                     log10(stage.pres.all.2.removed$Freq), method = 'spearman')
+stage.carb.macro.count.removed.3 <- cor.test(log10(carb.macro.count.removed$count), 
+                                     log10(stage.pres.all.3.removed$Freq), method = 'spearman')
+stage.carb.macro.count.removed.4 <- cor.test(log10(carb.macro.count.removed$count), 
+                                     log10(stage.pres.all.4.removed$Freq), method = 'spearman')
+stage.carb.macro.count.removed.5 <- cor.test(log10(carb.macro.count.removed$count), 
+                                     log10(stage.pres.all.5.removed$Freq), method = 'spearman')
+
+stage.macro.carb.count.removed <-  rbind(c("Stage", 1, "Macrostrat carbonate (count)",
+                                   stage.carb.macro.count.removed.1$estimate,
+                                   stage.carb.macro.count.removed.1$p.value),
+                                 c("Stage", 2, "Macrostrat carbonate (count)",
+                                   stage.carb.macro.count.removed.2$estimate, 
+                                   stage.carb.macro.count.removed.2$p.value),
+                                 c("Stage", 3, "Macrostrat carbonate (count)",
+                                   stage.carb.macro.count.removed.3$estimate, 
+                                   stage.carb.macro.count.removed.3$p.value),
+                                 c("Stage", 4, "Macrostrat carbonate (count)",
+                                   stage.carb.macro.count.removed.4$estimate, 
+                                   stage.carb.macro.count.removed.4$p.value),
+                                 c("Stage", 5, "Macrostrat carbonate (count)",
+                                   stage.carb.macro.count.removed.5$estimate,
+                                   stage.carb.macro.count.removed.5$p.value))
+
+# Taphonomic grade vs. siliclastic (count), stage level
+stage.sili.macro.count.removed.1 <- cor.test(log10(sili.macro.count.removed$count),
+                                     log10(stage.pres.all.1.removed$Freq), 
+                                     method = 'spearman')
+stage.sili.macro.count.removed.2 <- cor.test(log10(sili.macro.count.removed$count),
+                                     log10(stage.pres.all.2.removed$Freq),
+                                     method = 'spearman')
+stage.sili.macro.count.removed.3 <- cor.test(log10(sili.macro.count.removed$count),
+                                     log10(stage.pres.all.3.removed$Freq), 
+                                     method = 'spearman')
+stage.sili.macro.count.removed.4 <- cor.test(log10(sili.macro.count.removed$count),
+                                     log10(stage.pres.all.4.removed$Freq), 
+                                     method = 'spearman')
+stage.sili.macro.count.removed.5 <- cor.test(log10(sili.macro.count.removed$count),
+                                     log10(stage.pres.all.5.removed$Freq), 
+                                     method = 'spearman')
+
+stage.macro.sili.count.removed <- rbind(c("Stage", 1, "Macrostrat silicilcastic (count)",
+                                  stage.sili.macro.count.removed.1$estimate, 
+                                  stage.sili.macro.count.removed.1$p.value),
+                                c("Stage", 2, "Macrostrat siliciclastic (count)",
+                                  stage.sili.macro.count.removed.2$estimate, 
+                                  stage.sili.macro.count.removed.2$p.value),
+                                c("Stage", 3, "Macrostrat siliciclastic (count)",
+                                  stage.sili.macro.count.removed.3$estimate, 
+                                  stage.sili.macro.count.removed.3$p.value),
+                                c("Stage", 4, "Macrostrat siliciclastic (count)",
+                                  stage.sili.macro.count.removed.4$estimate, 
+                                  stage.sili.macro.count.removed.4$p.value),
+                                c("Stage", 5, "Macrostrat siliciclastic (count)",
+                                  stage.sili.macro.count.removed.5$estimate, 
+                                  stage.sili.macro.count.removed.5$p.value))
+
+# Taphonomic grade vs. carbonate (area), stage level
+stage.carb.macro.area.removed.1 <- cor.test(log10(carb.macro.area.removed$count), 
+                                    log10(stage.pres.all.1.removed$Freq), 
+                                    method = 'spearman')
+stage.carb.macro.area.removed.2 <- cor.test(log10(carb.macro.area.removed$count), 
+                                    log10(stage.pres.all.2.removed$Freq), 
+                                    method = 'spearman')
+stage.carb.macro.area.removed.3 <- cor.test(log10(carb.macro.area.removed$count), 
+                                    log10(stage.pres.all.3.removed$Freq), 
+                                    method = 'spearman')
+stage.carb.macro.area.removed.4 <- cor.test(log10(carb.macro.area.removed$count), 
+                                    log10(stage.pres.all.4.removed$Freq), 
+                                    method = 'spearman')
+stage.carb.macro.area.removed.5 <- cor.test(log10(carb.macro.area.removed$count), 
+                                    log10(stage.pres.all.5.removed$Freq), 
+                                    method = 'spearman')
+
+stage.macro.carb.area.removed <- rbind(c("Stage", 1, "Macrostrat carbonate (area)",
+                                 stage.carb.macro.area.removed.1$estimate, 
+                                 stage.carb.macro.area.removed.1$p.value),
+                               c("Stage", 2, "Macrostrat carbonate (area)",
+                                 stage.carb.macro.area.removed.2$estimate, 
+                                 stage.carb.macro.area.removed.2$p.value),
+                               c("Stage", 3, "Macrostrat carbonate (area)",
+                                 stage.carb.macro.area.removed.3$estimate, 
+                                 stage.carb.macro.area.removed.3$p.value),
+                               c("Stage", 4, "Macrostrat carbonate (area)",
+                                 stage.carb.macro.area.removed.4$estimate, 
+                                 stage.carb.macro.area.removed.4$p.value),
+                               c("Stage", 5, "Macrostrat carbonate (area)",
+                                 stage.carb.macro.area.removed.5$estimate, 
+                                 stage.carb.macro.area.removed.5$p.value))
+
+# Taphonomic grade vs. siliclastic (area), stage level
+stage.sili.macro.area.removed.1 <- cor.test(log10(sili.macro.area.removed$count), 
+                                    log10(stage.pres.all.1.removed$Freq),
+                                    method = 'spearman')
+stage.sili.macro.area.removed.2 <- cor.test(log10(sili.macro.area.removed$count), 
+                                    log10(stage.pres.all.2.removed$Freq),
+                                    method = 'spearman')
+stage.sili.macro.area.removed.3 <- cor.test(log10(sili.macro.area.removed$count), 
+                                    log10(stage.pres.all.3.removed$Freq),
+                                    method = 'spearman')
+stage.sili.macro.area.removed.4 <- cor.test(log10(sili.macro.area.removed$count), 
+                                    log10(stage.pres.all.4.removed$Freq),
+                                    method = 'spearman')
+stage.sili.macro.area.removed.5 <- cor.test(log10(sili.macro.area.removed$count), 
+                                    log10(stage.pres.all.5.removed$Freq),
+                                    method = 'spearman')
+
+stage.macro.sili.area.removed  <-  rbind(c("Stage", 1, "Macrostrat siliciclastic (area)",
+                                   stage.sili.macro.area.removed.1$estimate,
+                                   stage.sili.macro.area.removed.1$p.value),
+                                 c("Stage", 2, "Macrostrat siliciclastic (area)",
+                                   stage.sili.macro.area.removed.2$estimate,
+                                   stage.sili.macro.area.removed.2$p.value),
+                                 c("Stage", 3, "Macrostrat siliciclastic (area)",
+                                   stage.sili.macro.area.removed.3$estimate,
+                                   stage.sili.macro.area.removed.3$p.value),
+                                 c("Stage", 4, "Macrostrat siliciclastic (area)",
+                                   stage.sili.macro.area.removed.4$estimate,
+                                   stage.sili.macro.area.removed.4$p.value),
+                                 c("Stage", 5, "Macrostrat siliciclastic (area)",
+                                   stage.sili.macro.area.removed.5$estimate,
+                                   stage.sili.macro.area.removed.5$p.value))
+
+# COMBINED
+
+cor.results.removed <- as.data.frame(rbind(
+                                   stage.macro.carb.count.removed,
+                                   stage.macro.sili.count.removed,
+                                   stage.macro.carb.area.removed,
+                                   stage.macro.sili.area.removed
+))
+
+# Setup columns
+colnames(cor.results.removed) <- c("Bin size", "Preservation Score", "vs.", "Rho", "p")
+cor.results.removed$Rho <- signif(as.numeric(cor.results.removed$Rho), digits = 3)
+cor.results.removed$p <- signif(as.numeric(cor.results.removed$p), digits = 5)
+
+# Correct for multiple tests
+cor.results.removed$BH <- p.adjust(cor.results.removed$p, method = "BH")
+cor.results.removed$Signif <- ifelse(cor.results.removed$BH < 0.05, "*", "")
+
+# Write .csv
+write.csv(cor.results.removed, "Results/All_correlations_BH_corrected_removed.csv")
 
 ##### PERIOD CORRELATIONS #####
 
