@@ -373,7 +373,7 @@ results$shared <- as.numeric(results$shared)
 results <- results %>%
   filter(bin > 55 & bin < 93)
 
-results %>%
+test <- results %>%
   dplyr::group_by(Data) %>%
   dplyr::summarize(Mean.occ = mean(n.cells), 
                    Median.occ = median(n.cells), 
@@ -733,7 +733,7 @@ ggsave("Dark_data_graphs/8.Lat.shift.png", plot = p8,
 ggsave("Dark_data_graphs/Final_Figs/X.Lat.shift.png", plot = p8, 
        device = "png", type = "cairo")
 
-combined %>%
+test <- combined %>%
   group_by(Data, Rank) %>%
   dplyr::summarize(Mean.shift.mean = mean(Mean_shift), 
                    Median.shift.mean = median(Mean_shift))
@@ -747,7 +747,6 @@ space.results.gen$Rank <- "Genus"
 space.results.fam$Rank <- "Family"
 comb.space.results <- rbind(space.results.gen, space.results.fam)
 write.csv(comb.space.results, file = "Dark_data_graphs/Final_Figs/Supp_Figs/SI_Table_5.csv")
-
 
 # Mean/median addition of latitudinal range from museums, as percentage of total
 lat.results.stage %>%
@@ -797,7 +796,8 @@ lat.results.stage.fam %>%
     theme(legend.position = "none") +
   guides(alpha = "none") +
   scale_fill_viridis(discrete = TRUE, alpha=0.6) +
-  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  scale_colour_viridis_d() +
+    geom_jitter(shape=16, position=position_jitterdodge(jitter.width = 0.2), aes(color = Data), alpha = 0.8) +
   ylab("Difference between full latitudinal range and data (°)") +
   xlab(""))
 
@@ -814,8 +814,8 @@ ggsave("Dark_data_graphs/Final_Figs/X.Lat.diff.png", plot = p9,
        device = "png", type = "cairo")
 
 (p8 <- ggarrange(p9, ggarrange(a, b, ncol = 2, 
-                 labels = c("B", "C"), common.legend = T, 
-                 legend = "bottom"), labels = "A",
+                 labels = c("C", "D"), common.legend = T, 
+                 legend = "bottom"), labels = "B",
                  nrow = 2
                  ))
 

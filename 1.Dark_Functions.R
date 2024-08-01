@@ -100,6 +100,7 @@ library(deeptime)
 library(wesanderson)
 library(viridis)
 library(sjPlot)
+library(rmacrostrat)
 
 ################################################################################
 # 1. SETUP

@@ -159,8 +159,8 @@ m.dat.rotate <- palaeorotate(m.dat.rotate,
 ################################################################################
 
 # Read in data
-carb.macro <- read.csv('https://macrostrat.org/api/v2/units?lith_type=carbonate&environ_class=marine&response=long&format=csv', stringsAsFactors = FALSE)
-sili.macro <- read.csv('https://macrostrat.org/api/v2/units?lith_type=siliciclastic&environ_class=marine&response=long&format=csv', stringsAsFactors = FALSE)
+carb.macro <- get_units(lithology_type = "carbonate", environ_class = "marine")
+sili.macro <- get_units(lithology_type = "siliciclastic", environ_class = "marine")
 
 # Change column names
 names(carb.macro)[names(carb.macro) == 't_age'] <- "min_ma"
